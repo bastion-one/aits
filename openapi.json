@@ -1691,6 +1691,62 @@
       }
     },
     "/agents/{agent_uuid}/sessions/": {
+      "get": {
+        "description": "Sessions this agent produced work in, most recently active first.\n\nAn agent participates in a session when one of its DUTs (``agent_cid`` ==\nthe agent's genesis cid) is linked by a lineage node. Each summary covers\nALL nodes in that session -- identical semantics to ``GET /lineage/`` -- so\nfrontier and timestamps stay coherent even when a session mixes actors.",
+        "operationId": "agents_list_sessions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionSummary"
+                  },
+                  "title": "Response Agents List Sessions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions",
+        "tags": [
+          "agents"
+        ]
+      },
       "post": {
         "description": "Start a fresh session for this agent and point its current-session\nref at it; subsequent ``record`` calls chain there. Returns the session's\ngenesis node.",
         "operationId": "agents_new_session",

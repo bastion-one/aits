@@ -27,7 +27,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-AITS_URL = os.environ.get("AITS_URL", "http://127.0.0.1:8000")
+AITS_URL = os.environ.get("AITS_URL", "http://127.0.0.1:8001")
 HTTP_TIMEOUT = float(os.environ.get("AITS_HOOK_TIMEOUT", "3"))
 TRUNCATE = 50_000
 

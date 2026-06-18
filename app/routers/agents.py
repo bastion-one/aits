@@ -20,10 +20,11 @@ from sqlmodel import Session, select
 
 from .. import ledger
 from ..db import SessionDep
-from ..models import Agent
+from ..models import Agent, DataUniqueTag, LineageTag
+from ..nodes import hex_cid_list
 from .common import get_agent_row
 from .configs import ConfigCreate, config_row
-from .lineage import LineageRead, RecordCreate, RecordRead, SessionCreate
+from .lineage import LineageRead, RecordCreate, RecordRead, SessionCreate, SessionSummary
 from .lineage import perform_record
 from .lineage import start_session as lineage_start_session
 
@@ -164,6 +165,46 @@ def record(agent_uuid: UUID, body: AgentRecordCreate, session: SessionDep) -> Re
         session.add(agent)
         session.commit()
     return result
+
+
+@router.get("/agents/{agent_uuid}/sessions/", response_model=list[SessionSummary])
+def list_sessions(agent_uuid: UUID, session: SessionDep, limit: int = 100) -> list[SessionSummary]:
+    """Sessions this agent produced work in, most recently active first.
+
+    An agent participates in a session when one of its DUTs (``agent_cid`` ==
+    the agent's genesis cid) is linked by a lineage node. Each summary covers
+    ALL nodes in that session -- identical semantics to ``GET /lineage/`` -- so
+    frontier and timestamps stay coherent even when a session mixes actors.
+    """
+    agent = get_agent_row(session, agent_uuid)
+    session_uuids = set(
+        session.exec(
+            select(LineageTag.session_uuid).where(
+                LineageTag.dut_cid.in_(
+                    select(DataUniqueTag.cid).where(DataUniqueTag.agent_cid == agent.cid)
+                )
+            )
+        ).all()
+    )
+    if not session_uuids:
+        return []
+    by_session: dict[UUID, list[LineageTag]] = {}
+    for row in session.exec(
+        select(LineageTag).where(LineageTag.session_uuid.in_(session_uuids))
+    ).all():
+        by_session.setdefault(row.session_uuid, []).append(row)
+    summaries = [
+        SessionSummary(
+            session_uuid=sid,
+            nodes=len(rows),
+            started_at=min(r.occurred_at for r in rows),
+            last_occurred_at=max(r.occurred_at for r in rows),
+            frontier=hex_cid_list(ledger.session_frontier(rows)),
+        )
+        for sid, rows in by_session.items()
+    ]
+    summaries.sort(key=lambda s: s.last_occurred_at, reverse=True)
+    return summaries[:limit]
 
 
 @router.post(
