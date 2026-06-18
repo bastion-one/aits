@@ -1,0 +1,10 @@
+{
+  "packageName": "bastion_one_client",
+  "projectName": "bastion-one-client",
+  "packageVersion": "0.1.2",
+  "generateSourceCodeOnly": false,
+  "hideGenerationTimestamp": true,
+  "removeOperationIdPrefix": true,
+  "removeOperationIdPrefixDelimiter": "_",
+  "removeOperationIdPrefixCount": 1
+}

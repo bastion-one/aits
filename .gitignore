@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv
+.uv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+!clients/build/
+!clients/build/**
+clients/build/__pycache__/
+clients/build/*.pyc
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Env files
+.env
+.env.local
+
+# Fully generated, ephemeral client tree. Generator inputs/overrides live in
+# clients/build/ (tracked); see the `client` target in the Makefile.
+clients/python/
+# Claude Code -> AITS ledger runtime state (agent uuid, toggle, audit log)
+.claude/aits/
+
+# Generated ledger viewer snapshots (tools/aits_view.py)
+aits-view.html

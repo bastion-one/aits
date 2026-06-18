@@ -1,0 +1,2744 @@
+{
+  "components": {
+    "schemas": {
+      "ActivationCreate": {
+        "properties": {
+          "config_cid": {
+            "title": "Config Cid",
+            "type": "string"
+          },
+          "expected_head": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CID (hex) of the activation the client believes is the current head; null for the first activation. Stale heads are rejected (409).",
+            "title": "Expected Head"
+          }
+        },
+        "required": [
+          "config_cid"
+        ],
+        "title": "ActivationCreate",
+        "type": "object"
+      },
+      "ActivationRead": {
+        "properties": {
+          "agent_uuid": {
+            "format": "uuid",
+            "title": "Agent Uuid",
+            "type": "string"
+          },
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "config_cid": {
+            "title": "Config Cid",
+            "type": "string"
+          },
+          "prev_cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Cid"
+          }
+        },
+        "required": [
+          "cid",
+          "agent_uuid",
+          "config_cid",
+          "prev_cid"
+        ],
+        "title": "ActivationRead",
+        "type": "object"
+      },
+      "AgentCreate": {
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfigCreate"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional starting config; recorded (dedup) and activated in the same call"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AgentCreate",
+        "type": "object"
+      },
+      "AgentRead": {
+        "properties": {
+          "active_config_cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Config Cid"
+          },
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_session_uuid": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Session Uuid"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "uuid": {
+            "format": "uuid",
+            "title": "Uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cid",
+          "uuid",
+          "name",
+          "created_at",
+          "active_config_cid",
+          "current_session_uuid"
+        ],
+        "title": "AgentRead",
+        "type": "object"
+      },
+      "AgentRecordCreate": {
+        "description": "One round of this agent's work; identity and session come from the path\nand the agent's state. ``actor_id`` defaults to the agent's name,\n``step_id`` to the ``span_id``.",
+        "properties": {
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "agent_output": {
+            "title": "Agent Output",
+            "type": "string"
+          },
+          "artifact_cids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Artifact Cids",
+            "type": "array"
+          },
+          "business_object_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Business Object Keys",
+            "type": "array"
+          },
+          "config_cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "hex CID of the config used; defaults to the agent's active one",
+            "title": "Config Cid"
+          },
+          "input_context": {
+            "title": "Input Context",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "prev": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev"
+          },
+          "sequence": {
+            "default": 0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "span_id": {
+            "description": "runtime span handle, assigned at span start",
+            "title": "Span Id",
+            "type": "string"
+          },
+          "step_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Id"
+          },
+          "transformation": {
+            "title": "Transformation",
+            "type": "string"
+          },
+          "used_sessions": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Used Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "span_id",
+          "input_context",
+          "agent_output",
+          "transformation"
+        ],
+        "title": "AgentRecordCreate",
+        "type": "object"
+      },
+      "AgentUpdate": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AgentUpdate",
+        "type": "object"
+      },
+      "AliasCreate": {
+        "properties": {
+          "alias": {
+            "title": "Alias",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "alias"
+        ],
+        "title": "AliasCreate",
+        "type": "object"
+      },
+      "AliasRead": {
+        "properties": {
+          "alias": {
+            "title": "Alias",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "alias",
+          "created_at"
+        ],
+        "title": "AliasRead",
+        "type": "object"
+      },
+      "AliasResolveRead": {
+        "properties": {
+          "alias": {
+            "title": "Alias",
+            "type": "string"
+          },
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cid",
+          "source",
+          "alias"
+        ],
+        "title": "AliasResolveRead",
+        "type": "object"
+      },
+      "AppendCreate": {
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "derived_from": {
+            "description": "hex CIDs of cross-session inputs: another session's head node(s) or DUTs",
+            "items": {
+              "type": "string"
+            },
+            "title": "Derived From",
+            "type": "array"
+          },
+          "dut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "hex CID of the DUT this round produced",
+            "title": "Dut"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "prev": {
+            "description": "hex CIDs of this node's intra-session causal predecessors",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Prev",
+            "type": "array"
+          },
+          "step_id": {
+            "title": "Step Id",
+            "type": "string"
+          },
+          "transformation": {
+            "title": "Transformation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor_id",
+          "step_id",
+          "transformation",
+          "prev"
+        ],
+        "title": "AppendCreate",
+        "type": "object"
+      },
+      "ArtifactRead": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "$ref": "#/components/schemas/AliasRead"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locator"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cid",
+          "sha256",
+          "locator",
+          "aliases"
+        ],
+        "title": "ArtifactRead",
+        "type": "object"
+      },
+      "ArtifactUpdate": {
+        "properties": {
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locator"
+          }
+        },
+        "required": [
+          "locator"
+        ],
+        "title": "ArtifactUpdate",
+        "type": "object"
+      },
+      "AuditFailure": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "property_violated": {
+            "title": "Property Violated",
+            "type": "string"
+          },
+          "record_key": {
+            "title": "Record Key",
+            "type": "string"
+          },
+          "record_kind": {
+            "title": "Record Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_kind",
+          "record_key",
+          "property_violated",
+          "message"
+        ],
+        "title": "AuditFailure",
+        "type": "object"
+      },
+      "AuditRead": {
+        "properties": {
+          "commit_entries": {
+            "title": "Commit Entries",
+            "type": "integer"
+          },
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/AuditFailure"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "nodes_checked": {
+            "title": "Nodes Checked",
+            "type": "integer"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "nodes_checked",
+          "commit_entries",
+          "failures"
+        ],
+        "title": "AuditRead",
+        "type": "object"
+      },
+      "Body_artifacts_upload_file": {
+        "properties": {
+          "alias": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alias"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "source": {
+            "default": "upload",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_artifacts_upload_file",
+        "type": "object"
+      },
+      "CommitEntryRead": {
+        "properties": {
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "entry_hash": {
+            "title": "Entry Hash",
+            "type": "string"
+          },
+          "prev_hash": {
+            "title": "Prev Hash",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "cid",
+          "recorded_at",
+          "prev_hash",
+          "entry_hash"
+        ],
+        "title": "CommitEntryRead",
+        "type": "object"
+      },
+      "ConfigCreate": {
+        "properties": {
+          "llm_config": {
+            "additionalProperties": true,
+            "title": "Llm Config",
+            "type": "object"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "system_prompt": {
+            "title": "System Prompt",
+            "type": "string"
+          },
+          "tools": {
+            "items": {},
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "system_prompt"
+        ],
+        "title": "ConfigCreate",
+        "type": "object"
+      },
+      "ConfigRead": {
+        "properties": {
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "llm_config": {
+            "additionalProperties": true,
+            "title": "Llm Config",
+            "type": "object"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "system_prompt": {
+            "title": "System Prompt",
+            "type": "string"
+          },
+          "tools": {
+            "items": {},
+            "title": "Tools",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cid",
+          "system_prompt",
+          "llm_config",
+          "tools",
+          "metadata"
+        ],
+        "title": "ConfigRead",
+        "type": "object"
+      },
+      "DUTCreate": {
+        "properties": {
+          "agent_output": {
+            "title": "Agent Output",
+            "type": "string"
+          },
+          "agent_uuid": {
+            "format": "uuid",
+            "title": "Agent Uuid",
+            "type": "string"
+          },
+          "artifact_cids": {
+            "description": "hex CIDs of the byte artifacts touched",
+            "items": {
+              "type": "string"
+            },
+            "title": "Artifact Cids",
+            "type": "array"
+          },
+          "business_object_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Business Object Keys",
+            "type": "array"
+          },
+          "config_cid": {
+            "description": "hex CID of the behavioral AgentConfig used",
+            "title": "Config Cid",
+            "type": "string"
+          },
+          "input_context": {
+            "title": "Input Context",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "self-asserted event time; defaults to server now",
+            "title": "Occurred At"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "span_id": {
+            "description": "runtime span handle, assigned at span start",
+            "title": "Span Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_uuid",
+          "config_cid",
+          "span_id",
+          "sequence",
+          "input_context",
+          "agent_output"
+        ],
+        "title": "DUTCreate",
+        "type": "object"
+      },
+      "DUTRead": {
+        "properties": {
+          "agent_cid": {
+            "title": "Agent Cid",
+            "type": "string"
+          },
+          "agent_output": {
+            "title": "Agent Output",
+            "type": "string"
+          },
+          "artifact_cids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Artifact Cids",
+            "type": "array"
+          },
+          "business_object_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Business Object Keys",
+            "type": "array"
+          },
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "config_cid": {
+            "title": "Config Cid",
+            "type": "string"
+          },
+          "input_context": {
+            "title": "Input Context",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "span_id": {
+            "title": "Span Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cid",
+          "span_id",
+          "business_object_keys",
+          "sequence",
+          "input_context",
+          "agent_output",
+          "occurred_at",
+          "agent_cid",
+          "config_cid",
+          "artifact_cids"
+        ],
+        "title": "DUTRead",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LineageRead": {
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "derived_from": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Derived From",
+            "type": "array"
+          },
+          "dut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dut"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "prev": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Prev",
+            "type": "array"
+          },
+          "session_uuid": {
+            "format": "uuid",
+            "title": "Session Uuid",
+            "type": "string"
+          },
+          "step_id": {
+            "title": "Step Id",
+            "type": "string"
+          },
+          "transformation": {
+            "title": "Transformation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cid",
+          "session_uuid",
+          "actor_id",
+          "step_id",
+          "transformation",
+          "occurred_at",
+          "prev",
+          "derived_from",
+          "dut"
+        ],
+        "title": "LineageRead",
+        "type": "object"
+      },
+      "NewSessionCreate": {
+        "properties": {
+          "session_uuid": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "stable session key; defaults to a new uuid4",
+            "title": "Session Uuid"
+          },
+          "step_id": {
+            "default": "session",
+            "title": "Step Id",
+            "type": "string"
+          }
+        },
+        "title": "NewSessionCreate",
+        "type": "object"
+      },
+      "RecordCreate": {
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "agent_output": {
+            "title": "Agent Output",
+            "type": "string"
+          },
+          "agent_uuid": {
+            "format": "uuid",
+            "title": "Agent Uuid",
+            "type": "string"
+          },
+          "artifact_cids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Artifact Cids",
+            "type": "array"
+          },
+          "business_object_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Business Object Keys",
+            "type": "array"
+          },
+          "config_cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "hex CID of the config used; defaults to the agent's active one",
+            "title": "Config Cid"
+          },
+          "input_context": {
+            "title": "Input Context",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "prev": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "hex CIDs of intra-session predecessors; defaults to the session frontier",
+            "title": "Prev"
+          },
+          "sequence": {
+            "default": 0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "span_id": {
+            "description": "runtime span handle, assigned at span start",
+            "title": "Span Id",
+            "type": "string"
+          },
+          "step_id": {
+            "title": "Step Id",
+            "type": "string"
+          },
+          "transformation": {
+            "title": "Transformation",
+            "type": "string"
+          },
+          "used_sessions": {
+            "description": "sessions whose results this round consumed; each one's frontier is linked in derived_from (head-at-handoff)",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Used Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_uuid",
+          "span_id",
+          "input_context",
+          "agent_output",
+          "transformation",
+          "actor_id",
+          "step_id"
+        ],
+        "title": "RecordCreate",
+        "type": "object"
+      },
+      "RecordRead": {
+        "properties": {
+          "dut": {
+            "$ref": "#/components/schemas/DUTRead"
+          },
+          "node": {
+            "$ref": "#/components/schemas/LineageRead"
+          }
+        },
+        "required": [
+          "dut",
+          "node"
+        ],
+        "title": "RecordRead",
+        "type": "object"
+      },
+      "SessionCreate": {
+        "properties": {
+          "actor_id": {
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "session_uuid": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "stable session key; defaults to a new uuid4",
+            "title": "Session Uuid"
+          },
+          "step_id": {
+            "title": "Step Id",
+            "type": "string"
+          },
+          "transformation": {
+            "default": "session-start",
+            "title": "Transformation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor_id",
+          "step_id"
+        ],
+        "title": "SessionCreate",
+        "type": "object"
+      },
+      "SessionRead": {
+        "properties": {
+          "frontier": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Frontier",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/LineageRead"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "session_uuid": {
+            "format": "uuid",
+            "title": "Session Uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_uuid",
+          "nodes",
+          "frontier"
+        ],
+        "title": "SessionRead",
+        "type": "object"
+      },
+      "SessionSummary": {
+        "properties": {
+          "frontier": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Frontier",
+            "type": "array"
+          },
+          "last_occurred_at": {
+            "format": "date-time",
+            "title": "Last Occurred At",
+            "type": "string"
+          },
+          "nodes": {
+            "title": "Nodes",
+            "type": "integer"
+          },
+          "session_uuid": {
+            "format": "uuid",
+            "title": "Session Uuid",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_uuid",
+          "nodes",
+          "started_at",
+          "last_occurred_at",
+          "frontier"
+        ],
+        "title": "SessionSummary",
+        "type": "object"
+      },
+      "TracebackStep": {
+        "properties": {
+          "agent_cid": {
+            "title": "Agent Cid",
+            "type": "string"
+          },
+          "agent_output": {
+            "title": "Agent Output",
+            "type": "string"
+          },
+          "config_cid": {
+            "title": "Config Cid",
+            "type": "string"
+          },
+          "dut_cid": {
+            "title": "Dut Cid",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "dut_cid",
+          "agent_output",
+          "agent_cid",
+          "config_cid"
+        ],
+        "title": "TracebackStep",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VerifyRead": {
+        "properties": {
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "property_violated": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Property Violated"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cid",
+          "valid"
+        ],
+        "title": "VerifyRead",
+        "type": "object"
+      },
+      "WatermarkRead": {
+        "properties": {
+          "cid": {
+            "title": "Cid",
+            "type": "string"
+          },
+          "watermark": {
+            "title": "Watermark",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cid",
+          "watermark"
+        ],
+        "title": "WatermarkRead",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "aits",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/agents/": {
+      "get": {
+        "operationId": "agents_list_all",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentRead"
+                  },
+                  "title": "Response Agents List All",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List All",
+        "tags": [
+          "agents"
+        ]
+      },
+      "post": {
+        "operationId": "agents_register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/agents/{agent_uuid}/": {
+      "get": {
+        "operationId": "agents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get",
+        "tags": [
+          "agents"
+        ]
+      },
+      "patch": {
+        "operationId": "agents_rename",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/agents/{agent_uuid}/activations/": {
+      "get": {
+        "operationId": "configs_activation_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ActivationRead"
+                  },
+                  "title": "Response Configs Activation History",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activation History",
+        "tags": [
+          "configs"
+        ]
+      },
+      "post": {
+        "operationId": "configs_activate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activate",
+        "tags": [
+          "configs"
+        ]
+      }
+    },
+    "/agents/{agent_uuid}/active-config/": {
+      "get": {
+        "operationId": "configs_active_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Active Config",
+        "tags": [
+          "configs"
+        ]
+      }
+    },
+    "/agents/{agent_uuid}/config/": {
+      "put": {
+        "description": "Make this config the agent's active one, in one call: record the\nbehavioral content (dedup) and activate it against the server-resolved\nchain head. Setting the already-active config is a no-op. Callers that\nneed the compare-and-set guard use ``POST .../activations/`` instead.",
+        "operationId": "configs_set_config",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Config",
+        "tags": [
+          "configs"
+        ]
+      }
+    },
+    "/agents/{agent_uuid}/record/": {
+      "post": {
+        "description": "Record one round of this agent's work into its current session,\nstarting a session if it has none. Concurrent operations on one agent\nshould use ``POST /lineage/{session_uuid}/record/`` with explicit sessions\ninstead of sharing this pointer.",
+        "operationId": "agents_record",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRecordCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/agents/{agent_uuid}/sessions/": {
+      "post": {
+        "description": "Start a fresh session for this agent and point its current-session\nref at it; subsequent ``record`` calls chain there. Returns the session's\ngenesis node.",
+        "operationId": "agents_new_session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewSessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "New Session",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/artifacts/": {
+      "post": {
+        "operationId": "artifacts_upload",
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "contentMediaType": "application/octet-stream",
+                "title": "Body",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/artifacts/by-digest/{sha256_hex}/": {
+      "get": {
+        "description": "Look up an artifact by the sha256 of its raw bytes -- the comparison\npath for a client holding a file.",
+        "operationId": "artifacts_get_by_digest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sha256_hex",
+            "required": true,
+            "schema": {
+              "title": "Sha256 Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get By Digest",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/artifacts/resolve/": {
+      "get": {
+        "operationId": "artifacts_resolve",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "required": true,
+            "schema": {
+              "title": "Source",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "alias",
+            "required": true,
+            "schema": {
+              "title": "Alias",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AliasResolveRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/artifacts/upload/": {
+      "post": {
+        "description": "Convenience: hash an uploaded file and register an alias in one call.\n\nReuses the same content-addressing as ``POST /artifacts/`` and the same\nalias upsert/conflict semantics as ``POST /artifacts/{cid_hex}/aliases/``\n(409 on a clashing pair). ``alias`` defaults to the uploaded filename, so a\nbare file upload is captured as ``(source=\"upload\", alias=<filename>)`` and\nis immediately resolvable.",
+        "operationId": "artifacts_upload_file",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_artifacts_upload_file"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload File",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/artifacts/{cid_hex}/": {
+      "get": {
+        "operationId": "artifacts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get",
+        "tags": [
+          "artifacts"
+        ]
+      },
+      "patch": {
+        "operationId": "artifacts_set_locator",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtifactUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Locator",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/artifacts/{cid_hex}/aliases/": {
+      "post": {
+        "operationId": "artifacts_add_alias",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AliasCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AliasRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Alias",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/audit/": {
+      "get": {
+        "operationId": "audit_full_audit",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Full Audit",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/commits/": {
+      "get": {
+        "operationId": "audit_commits",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CommitEntryRead"
+                  },
+                  "title": "Response Audit Commits",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Commits",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/configs/": {
+      "post": {
+        "operationId": "configs_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "configs"
+        ]
+      }
+    },
+    "/configs/{cid_hex}/": {
+      "get": {
+        "operationId": "configs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get",
+        "tags": [
+          "configs"
+        ]
+      }
+    },
+    "/duts/": {
+      "post": {
+        "operationId": "duts_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DUTCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DUTRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "duts"
+        ]
+      }
+    },
+    "/duts/{cid_hex}/": {
+      "get": {
+        "operationId": "duts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DUTRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get",
+        "tags": [
+          "duts"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/lineage/": {
+      "get": {
+        "description": "Enumerate sessions, most recently active first. Includes sub-sessions\n(e.g. subagent work); their parents reach them via ``derived_from``.",
+        "operationId": "lineage_list_sessions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionSummary"
+                  },
+                  "title": "Response Lineage List Sessions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sessions",
+        "tags": [
+          "lineage"
+        ]
+      },
+      "post": {
+        "operationId": "lineage_start_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Session",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
+    "/lineage/nodes/{cid_hex}/": {
+      "get": {
+        "operationId": "lineage_get_node",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Node",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
+    "/lineage/nodes/{cid_hex}/traceback/": {
+      "get": {
+        "description": "Every contributing DUT in the node's ancestry, ordered by event time,\neach carrying its agent + config attribution.",
+        "operationId": "lineage_trace_back",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TracebackStep"
+                  },
+                  "title": "Response Lineage Trace Back",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trace Back",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
+    "/lineage/nodes/{cid_hex}/watermark/": {
+      "get": {
+        "description": "Render the flat P1 watermark string straight off a node: its\n``derived_from`` parents (each head's produced DUT when it has one), the\ntransformation, and the asserted event time.",
+        "operationId": "lineage_watermark",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatermarkRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Watermark",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
+    "/lineage/{session_uuid}/": {
+      "get": {
+        "operationId": "lineage_get_session_nodes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Session Nodes",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
+    "/lineage/{session_uuid}/append/": {
+      "post": {
+        "operationId": "lineage_append",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Append",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
+    "/lineage/{session_uuid}/record/": {
+      "post": {
+        "description": "Record one round of work: the DUT span and its watermark node, chained\nonto the session, in a single call.",
+        "operationId": "lineage_record",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_uuid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record",
+        "tags": [
+          "lineage"
+        ]
+      }
+    },
+    "/verify/{cid_hex}/": {
+      "get": {
+        "operationId": "audit_verify",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cid_hex",
+            "required": true,
+            "schema": {
+              "title": "Cid Hex",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify",
+        "tags": [
+          "audit"
+        ]
+      }
+    }
+  }
+}

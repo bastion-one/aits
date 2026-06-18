@@ -1,0 +1,29 @@
+# OpenAPI Generator Ignore
+# Files / patterns listed here are skipped on (re)generation.
+# Behaves like .gitignore: https://openapi-generator.tech/docs/customization#ignore-file-format
+#
+# We rely on pyproject.toml for packaging and let the host repo own CI, so we
+# suppress the generator's redundant scaffolding here.
+
+# Legacy packaging (pyproject.toml is sufficient)
+setup.py
+setup.cfg
+
+# We maintain a hand-written PEP 621 pyproject.toml. The generator's emitted
+# pyproject mixes [tool.poetry.dependencies] with a setuptools build backend,
+# so deps never install. Keep ours; regenerations must not clobber it.
+pyproject.toml
+
+# CI / publishing helpers we do not use
+.travis.yml
+.gitlab-ci.yml
+.github/
+git_push.sh
+tox.ini
+
+# Auxiliary requirements files (deps already declared in pyproject.toml)
+requirements.txt
+test-requirements.txt
+
+# Generator's test stubs (empty TODO stubs that rot quickly)
+test/
