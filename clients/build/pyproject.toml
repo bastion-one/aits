@@ -1,5 +1,5 @@
 [project]
-name = "bastion-one-client"
+name = "aits-client"
 version = "0.1.2"
 description = "Python client for the aits HTTP API."
 readme = "README.md"
@@ -27,7 +27,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["bastion_one_client*"]
+include = ["aits_client*"]
 
 [tool.setuptools.package-data]
-bastion_one_client = ["py.typed"]
+aits_client = ["py.typed"]

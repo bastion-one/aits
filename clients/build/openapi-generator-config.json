@@ -1,6 +1,6 @@
 {
-  "packageName": "bastion_one_client",
-  "projectName": "bastion-one-client",
+  "packageName": "aits_client",
+  "projectName": "aits-client",
   "packageVersion": "0.1.2",
   "generateSourceCodeOnly": false,
   "hideGenerationTimestamp": true,

@@ -7,7 +7,7 @@ tempfile and the lifespan ``init_db()`` materializes the schema before the
 first request.
 
 Tests in this directory hit the running server through the generated
-``bastion-one-client`` SDK, exercising the full HTTP -> ASGI -> SQLAlchemy
+``aits-client`` SDK, exercising the full HTTP -> ASGI -> SQLAlchemy
 path. The SDK must already be built (``make regen``); if it isn't,
 ``pytest.importorskip`` skips the suite with an actionable message.
 """
@@ -27,9 +27,9 @@ from pathlib import Path
 
 import pytest
 
-bastion_one_client = pytest.importorskip(
-    "bastion_one_client",
-    reason="bastion-one-client SDK is not installed; run `make regen` first",
+aits_client = pytest.importorskip(
+    "aits_client",
+    reason="aits-client SDK is not installed; run `make regen` first",
 )
 
 
@@ -110,7 +110,7 @@ def base_url() -> Iterator[str]:
 
 
 @pytest.fixture(scope="module")
-def api_client(base_url: str) -> Iterator[bastion_one_client.ApiClient]:
-    cfg = bastion_one_client.Configuration(host=base_url)
-    with bastion_one_client.ApiClient(cfg) as ac:
+def api_client(base_url: str) -> Iterator[aits_client.ApiClient]:
+    cfg = aits_client.Configuration(host=base_url)
+    with aits_client.ApiClient(cfg) as ac:
         yield ac

@@ -13,8 +13,8 @@ import hashlib
 import pytest
 
 boc = pytest.importorskip(
-    "bastion_one_client",
-    reason="bastion-one-client SDK is not installed; run `make regen` first",
+    "aits_client",
+    reason="aits-client SDK is not installed; run `make regen` first",
 )
 
 pytestmark = pytest.mark.integration

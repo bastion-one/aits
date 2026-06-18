@@ -20,11 +20,11 @@ dependencies = [
 dev = [
     "black==26.5.1",
     "fastapi-cli>=0.0.24",
-    "httpx>=0.28.1",
+    "httpx2>=2.4.0",
     "pylint==4.0.5",
     "pytest==9.0.3",
 ]
-# NOTE: the generated SDK (bastion-one-client) is deliberately NOT a dependency
+# NOTE: the generated SDK (aits-client) is deliberately NOT a dependency
 # here. It is a regenerable, ephemeral artifact (clients/python), and making it
 # an editable project dep means every `uv run` re-resolves it and fails whenever
 # clients/python is absent -- so a plain `make test` would require generating the

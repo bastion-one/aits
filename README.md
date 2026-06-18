@@ -113,11 +113,11 @@ Bastion-One.
 
 ## Using the API
 
-AITS ships a generated Python SDK (`bastion-one-client`). Build it with
+AITS ships a generated Python SDK (`aits-client`). Build it with
 `make regen`, then the core flow looks like this:
 
 ```python
-from bastion_one_client import ApiClient, Configuration, AgentsApi, AgentCreate, ConfigCreate
+from aits_client import ApiClient, Configuration, AgentsApi, AgentCreate, ConfigCreate
 
 with ApiClient(Configuration(host="http://127.0.0.1:8000")) as client:
     agents = AgentsApi(client)

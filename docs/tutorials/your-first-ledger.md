@@ -55,7 +55,7 @@ Start with the imports and a client:
 ```python
 """ledger.py — record and verify one agent's work in AITS."""
 
-from bastion_one_client import (
+from aits_client import (
     ApiClient,
     Configuration,
     AgentsApi,
@@ -419,7 +419,7 @@ bookkeeping, no repeated identity. The whole scenario again:
 ```python
 """fastpath.py — the agent is the entry point: register it, then record."""
 
-from bastion_one_client import (
+from aits_client import (
     ApiClient,
     Configuration,
     AgentsApi,
