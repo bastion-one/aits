@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from pydantic import BaseModel
 
 from .db import init_db
 from .routers import agents, artifacts, audit, configs, duts, lineage
@@ -42,6 +43,10 @@ app.include_router(duts.router)
 app.include_router(lineage.router)
 
 
-@app.get("/health", tags=["health"])
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+class HealthStatus(BaseModel):
+    status: str
+
+
+@app.get("/health", tags=["health"], response_model=HealthStatus)
+def health() -> HealthStatus:
+    return HealthStatus(status="ok")

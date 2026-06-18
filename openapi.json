@@ -793,6 +793,19 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HealthStatus": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HealthStatus",
+        "type": "object"
+      },
       "LineageRead": {
         "properties": {
           "actor_id": {
@@ -2312,11 +2325,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Health Health",
-                  "type": "object"
+                  "$ref": "#/components/schemas/HealthStatus"
                 }
               }
             },
