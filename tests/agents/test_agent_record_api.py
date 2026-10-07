@@ -1,9 +1,8 @@
-"""The agent as entry point: ``record`` against the current session, and
-``new_session`` rotation of the pointer."""
+"""Callers select a root explicitly; agent identity has no current-graph pointer."""
 
 from fastapi.testclient import TestClient
 
-from tests.helpers import CONFIG_BODY, make_agent
+from tests.helpers import CONFIG_BODY, create_node, create_root, inline_dut, make_agent
 
 
 def _register(client: TestClient, name: str = "worker") -> dict:
@@ -12,92 +11,69 @@ def _register(client: TestClient, name: str = "worker") -> dict:
     return r.json()
 
 
-def _record(client: TestClient, agent: dict, **overrides) -> dict:
-    payload = {
-        "span_id": "span-1",
-        "input_context": "find PO",
-        "agent_output": "PO-88",
-        "transformation": "find-po",
-        **overrides,
-    }
-    r = client.post(f"/agents/{agent['uuid']}/record/", json=payload)
-    assert r.status_code == 201, r.text
-    return r.json()
-
-
-def test_first_record_starts_the_current_session(client: TestClient) -> None:
+def test_agent_has_no_current_session_pointer(client: TestClient) -> None:
     agent = _register(client)
-    assert agent["current_session_uuid"] is None
+    assert "current_session_uuid" not in agent
+    got = client.get(f"/agents/{agent['uuid']}/").json()
+    assert "current_session_uuid" not in got
 
-    first = _record(client, agent)
+
+def test_one_agent_writes_two_explicit_roots(client: TestClient) -> None:
+    """Attribute work in separate graphs to one unchanged agent identity."""
+    agent = _register(client)
+    first_root = create_root(client, actor=agent["name"], transformation="job-a")
+    second_root = create_root(client, actor=agent["name"], transformation="job-b")
+    a = create_node(
+        client,
+        first_root["cid"],
+        [first_root["cid"]],
+        actor=agent["name"],
+        dut=inline_dut(agent["uuid"], span_id="a1"),
+    )
+    b = create_node(
+        client,
+        second_root["cid"],
+        [second_root["cid"]],
+        actor=agent["name"],
+        dut=inline_dut(agent["uuid"], span_id="b1", agent_output="other"),
+    )
+    assert a["node"]["root"] == first_root["cid"]
+    assert b["node"]["root"] == second_root["cid"]
     refreshed = client.get(f"/agents/{agent['uuid']}/").json()
-    assert refreshed["current_session_uuid"] == first["node"]["session_uuid"]
-
-    second = _record(client, agent, span_id="span-2")
-    assert second["node"]["session_uuid"] == first["node"]["session_uuid"]
-    assert second["node"]["prev"] == [first["node"]["cid"]]
+    assert refreshed == agent or refreshed["cid"] == agent["cid"]
+    assert refreshed["name"] == agent["name"]
+    assert refreshed["active_config_cid"] == agent["active_config_cid"]
 
 
-def test_agent_defaults_for_actor_and_step(client: TestClient) -> None:
-    agent = _register(client, name="invoice-extractor")
-    round_ = _record(client, agent)
-    assert round_["node"]["actor_id"] == "invoice-extractor"
-    assert round_["node"]["step_id"] == "span-1"
-    assert round_["dut"]["config_cid"] == agent["active_config_cid"]
-
-    explicit = _record(client, agent, span_id="span-2", actor_id="me", step_id="extract")
-    assert explicit["node"]["actor_id"] == "me"
-    assert explicit["node"]["step_id"] == "extract"
-
-
-def test_new_session_rotates_the_pointer(client: TestClient) -> None:
-    agent = _register(client)
-    first = _record(client, agent)
-    old_session = first["node"]["session_uuid"]
-
-    genesis = client.post(f"/agents/{agent['uuid']}/sessions/", json={})
-    assert genesis.status_code == 201, genesis.text
-    new_session = genesis.json()["session_uuid"]
-    assert new_session != old_session
-    assert genesis.json()["actor_id"] == agent["name"]
-
-    rotated = _record(client, agent, span_id="span-2")
-    assert rotated["node"]["session_uuid"] == new_session
-    assert rotated["node"]["prev"] == [genesis.json()["cid"]]
-
-    # the old session is untouched and still readable
-    old = client.get(f"/lineage/{old_session}/").json()
-    assert old["frontier"] == [first["node"]["cid"]]
-
-
-def test_handoff_via_used_sessions(client: TestClient) -> None:
+def test_handoff_via_exact_derived_from(client: TestClient) -> None:
+    """Link a supervisor's work to the specific helper result it consumed."""
     helper = _register(client, name="sub-A")
-    head = _record(client, helper, agent_output="PO-88")
+    helper_root = create_root(client, actor="sub-A")
+    head = create_node(
+        client,
+        helper_root["cid"],
+        [helper_root["cid"]],
+        actor="sub-A",
+        dut=inline_dut(helper["uuid"], agent_output="PO-88"),
+    )["node"]
 
     supervisor = _register(client, name="super")
-    merge = _record(
+    super_root = create_root(client, actor="super")
+    merge = create_node(
         client,
-        supervisor,
-        span_id="s1",
-        agent_output="pay ref PO-88",
+        super_root["cid"],
+        [super_root["cid"]],
+        actor="super",
         transformation="Summarization",
-        used_sessions=[head["node"]["session_uuid"]],
+        derived_from=[head["cid"]],
+        dut=inline_dut(supervisor["uuid"], span_id="s1", agent_output="pay ref PO-88"),
     )
-    assert merge["node"]["derived_from"] == [head["node"]["cid"]]
+    assert merge["node"]["derived_from"] == [head["cid"]]
     assert client.get(f"/verify/{merge['node']['cid']}/").json()["valid"] is True
 
 
-def test_record_without_active_config_leaves_no_pointer(client: TestClient) -> None:
-    agent = make_agent(client)  # no config
-    r = client.post(
-        f"/agents/{agent['uuid']}/record/",
-        json={
-            "span_id": "x",
-            "input_context": "x",
-            "agent_output": "y",
-            "transformation": "t",
-        },
-    )
-    assert r.status_code == 409
-    refreshed = client.get(f"/agents/{agent['uuid']}/").json()
-    assert refreshed["current_session_uuid"] is None
+def test_removed_agent_write_routes(client: TestClient) -> None:
+    """Prevent callers from using the former implicit session-writing API."""
+    agent = make_agent(client)
+    assert client.post(f"/agents/{agent['uuid']}/record/", json={}).status_code == 404
+    assert client.post(f"/agents/{agent['uuid']}/sessions/", json={}).status_code == 405

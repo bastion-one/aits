@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bastion
+          POSTGRES_PASSWORD: bastion
+          POSTGRES_DB: bastion
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bastion -d bastion"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      AITS_TEST_DATABASE_URL: postgresql+psycopg://bastion:bastion@127.0.0.1:5432/bastion
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # No python-version input: uv reads .python-version (3.13).
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --group quality
+
+      - name: Format check
+        run: make fmt-check
+
+      - name: Lint
+        run: make lint
+
+      - name: Tests
+        run: make quality-coverage quality-complexity
+
+      - name: Mutation threshold
+        run: make quality-mutation
+
+      - name: Upload quality measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-results
+          path: quality-results/
+
+      - name: OpenAPI schema is up to date
+        run: |
+          make openapi
+          git diff --exit-code openapi.json

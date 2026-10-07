@@ -4,20 +4,26 @@
 Records this project's Claude Code activity into the local AITS ledger:
 
 - SessionStart   register/refresh the agent + its config fingerprint
-- PostToolUse    record each tool call as a DUT + lineage round
+- PostToolUse    record each tool call as a DUT + lineage node
 - Stop           record the assistant turn from the transcript
-- SubagentStop   record the handoff merge (used_sessions)
+- SubagentStop   record the handoff merge (derived_from)
 - SessionEnd     append a full-audit receipt to .claude/aits/audit.log
 
 Toggle (no settings edit needed):
 
     python3 .claude/hooks/aits_ledger.py off | on | status
 
-Recording is best-effort by design: any failure (ledger down, bad payload)
-exits 0 silently so the session is never disturbed. AITS detects; it does
+Set ``AITS_API_KEY`` to a service key when the ledger requires one; ``status``
+reports whether it is set. Without it, an authenticated ledger rejects every
+call.
+
+Recording is best-effort by design: any failure (ledger down, bad payload,
+missing key) exits 0 silently so the session is never disturbed. AITS detects; it does
 not gate.
 """
 
+import fcntl
+import hashlib
 import json
 import os
 import sys
@@ -27,7 +33,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-AITS_URL = os.environ.get("AITS_URL", "http://127.0.0.1:8001")
+AITS_URL = os.environ.get("AITS_URL", "http://127.0.0.1:8000")
+API_KEY = os.environ.get("AITS_API_KEY", "")
 HTTP_TIMEOUT = float(os.environ.get("AITS_HOOK_TIMEOUT", "3"))
 TRUNCATE = 50_000
 
@@ -43,12 +50,10 @@ SUBAGENT_NS = uuid.UUID("a175c0de-ad00-4000-8000-00c1aedec0de")
 
 def api(method: str, path: str, body=None):
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(
-        AITS_URL + path,
-        data=data,
-        method=method,
-        headers={"Content-Type": "application/json"},
-    )
+    headers = {"Content-Type": "application/json"}
+    if API_KEY:
+        headers["Authorization"] = f"Bearer {API_KEY}"
+    req = urllib.request.Request(AITS_URL + path, data=data, method=method, headers=headers)
     with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
         return json.loads(resp.read())
 
@@ -97,24 +102,49 @@ def cached_agent() -> "str | None":
     return None
 
 
-def record(session_uuid: str, body: dict) -> None:
-    """POST one round, self-healing the two recoverable failures: an agent
-    the ledger doesn't know yet (409/404) and an empty used_sessions source.
-    Uses the cached agent uuid -- only SessionStart (and the self-heal path)
-    talks to the agent endpoints."""
-    body.setdefault("agent_uuid", cached_agent() or ensure_agent())
+def lineage_file(session_id: str) -> Path:
+    # Claude session IDs are local lookup keys, never ledger identifiers.
+    key = hashlib.sha256(f"{AITS_URL}/{session_id}".encode()).hexdigest()
+    return STATE_DIR / f"lineage-{key}.json"
+
+
+def ensure_lineage(session_id: str) -> dict:
+    path = lineage_file(session_id)
+    if path.exists():
+        state = json.loads(path.read_text())
+        try:
+            api("GET", f"/lineage/nodes/{state['head']}/")
+            return state
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404:
+                raise
+    root = api(
+        "POST",
+        "/lineage/",
+        {"actor_id": "claude-code", "step_id": session_id, "transformation": "root"},
+    )
+    state = {"root": root["cid"], "head": root["cid"]}
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state))
+    return state
+
+
+def record(session_id: str, body: dict) -> None:
+    """Write an inline DUT with an explicit parent; retain the returned LT CID."""
+    state = ensure_lineage(session_id)
+    dut = {key: body.pop(key) for key in ("span_id", "input_context", "agent_output")}
+    dut["agent_uuid"] = cached_agent() or ensure_agent()
+    body.update(prev=[state["head"]], dut=dut)
     try:
-        api("POST", f"/lineage/{session_uuid}/record/", body)
+        created = api("POST", f"/lineage/{state['root']}/nodes/", body)
     except urllib.error.HTTPError as exc:
-        if exc.code in (404, 409) and body.get("used_sessions"):
-            body.pop("used_sessions")  # subagent made no tool calls; record plain
-            api("POST", f"/lineage/{session_uuid}/record/", body)
-        elif exc.code in (404, 409):
-            AGENT_FILE.unlink(missing_ok=True)  # stale agent (ledger reset)
-            body["agent_uuid"] = ensure_agent()
-            api("POST", f"/lineage/{session_uuid}/record/", body)
-        else:
+        if exc.code not in (404, 409):
             raise
+        # Refresh a missing agent/config without discarding provenance links.
+        dut["agent_uuid"] = ensure_agent()
+        created = api("POST", f"/lineage/{state['root']}/nodes/", body)
+    state["head"] = created["node"]["cid"]
+    lineage_file(session_id).write_text(json.dumps(state))
 
 
 def sub_session(session_id: str, agent_id: str) -> str:
@@ -148,17 +178,9 @@ def transcript_tail(path: str, role: str) -> str:
 
 
 def on_session_start(payload: dict) -> None:
-    agent_uuid = ensure_agent(payload.get("model", "unknown"))
-    # Point the agent's current-session ref at this Claude Code session and
-    # create its genesis, so `GET /agents/{uuid}/` answers "what is this agent
-    # working on" and the session is queryable immediately. Resumes keep the
-    # same session_id, so only fresh sessions rotate the pointer.
-    if payload.get("source", "startup") in ("startup", "clear") and payload.get("session_id"):
-        api(
-            "POST",
-            f"/agents/{agent_uuid}/sessions/",
-            {"session_uuid": payload["session_id"]},
-        )
+    ensure_agent(payload.get("model", "unknown"))
+    if payload.get("session_id"):
+        ensure_lineage(payload["session_id"])
 
 
 def on_post_tool_use(payload: dict) -> None:
@@ -200,6 +222,16 @@ def on_subagent_stop(payload: dict) -> None:
     agent_id = payload.get("agent_id")
     if not agent_id:
         return
+    source_file = lineage_file(sub_session(payload["session_id"], agent_id))
+    derived_from = []
+    if source_file.exists():
+        source = json.loads(source_file.read_text())
+        try:
+            api("GET", f"/lineage/nodes/{source['head']}/")
+            derived_from = [source["head"]]
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404:
+                raise
     record(
         payload["session_id"],
         {
@@ -209,7 +241,7 @@ def on_subagent_stop(payload: dict) -> None:
             "transformation": f"subagent:{payload.get('agent_type', 'unknown')}",
             "actor_id": "claude-code",
             "step_id": "handoff",
-            "used_sessions": [sub_session(payload["session_id"], agent_id)],
+            "derived_from": derived_from,
         },
     )
 
@@ -245,7 +277,8 @@ def toggle(command: str) -> int:
     elif command == "status":
         state = "OFF" if OFF_FLAG.exists() else "ON"
         agent = json.loads(AGENT_FILE.read_text())["uuid"] if AGENT_FILE.exists() else "(none)"
-        print(f"recording: {state} | ledger: {AITS_URL} | agent: {agent}")
+        key = "set" if API_KEY else "NOT SET"
+        print(f"recording: {state} | ledger: {AITS_URL} | key: {key} | agent: {agent}")
     else:
         print(f"usage: {sys.argv[0]} on|off|status", file=sys.stderr)
         return 2
@@ -261,7 +294,11 @@ def main() -> int:
         payload = json.load(sys.stdin)
         handler = HANDLERS.get(payload.get("hook_event_name", ""))
         if handler is not None:
-            handler(payload)
+            STATE_DIR.mkdir(parents=True, exist_ok=True)
+            # Async hook processes share the agent cache and lineage heads.
+            with (STATE_DIR / "ledger.lock").open("a") as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                handler(payload)
     except Exception:  # pylint: disable=broad-exception-caught
         pass  # never disturb the session; AITS detects, it does not gate
     return 0

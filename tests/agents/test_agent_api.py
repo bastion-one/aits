@@ -31,12 +31,14 @@ def test_register_with_inline_config_activates_it(client: TestClient) -> None:
 
 
 def test_register_inline_config_dedupes_globally(client: TestClient) -> None:
+    """Reuse the same configuration identity across standalone and inline creation."""
     standalone = make_config(client)
     r = client.post("/agents/", json={"name": "sharer", "config": CONFIG_BODY})
     assert r.json()["active_config_cid"] == standalone["cid"]
 
 
 def test_two_agents_get_distinct_genesis_cids(client: TestClient) -> None:
+    """Treat an agent name as a label, not a unique identity."""
     a = make_agent(client, name="same-name")
     b = make_agent(client, name="same-name")
     assert a["cid"] != b["cid"]
@@ -44,6 +46,7 @@ def test_two_agents_get_distinct_genesis_cids(client: TestClient) -> None:
 
 
 def test_rename_overwrites_annotation_without_moving_the_cid(client: TestClient) -> None:
+    """Allow a display-name change without invalidating the agent's stored proof."""
     agent = make_agent(client, name="before")
     renamed = client.patch(f"/agents/{agent['uuid']}/", json={"name": "after"}).json()
     assert renamed["name"] == "after"
@@ -60,3 +63,17 @@ def test_list_and_404(client: TestClient) -> None:
     assert {a["name"] for a in client.get("/agents/").json()} == {"a", "b"}
     missing = client.get("/agents/00000000-0000-0000-0000-000000000000/")
     assert missing.status_code == 404
+
+
+def test_list_pages_in_creation_order(client: TestClient) -> None:
+    names = [f"agent-{i}" for i in range(5)]
+    for name in names:
+        make_agent(client, name=name)
+    first = client.get("/agents/", params={"limit": 2}).json()
+    rest = client.get("/agents/", params={"limit": 10, "offset": 2}).json()
+    assert [a["name"] for a in first + rest] == names
+
+
+def test_list_rejects_out_of_range_paging(client: TestClient) -> None:
+    for params in ({"limit": 0}, {"limit": 1001}, {"offset": -1}):
+        assert client.get("/agents/", params=params).status_code == 422

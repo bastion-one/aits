@@ -19,7 +19,7 @@ from collections.abc import Callable, Iterator, Mapping
 from datetime import datetime
 from typing import Any
 
-from .canonical_json import canonical_dumps
+from .canonical_json import CanonicalEncodingError, canonical_dumps
 from .hashing import CHECKSUM_BYTES, sha256_hash
 from .result import Err, Ok, VerificationResult
 
@@ -59,9 +59,14 @@ def normalize_links(links: Mapping[str, Any] | None) -> Links:
     return normalized
 
 
+def encode_node(content: Any, links: Mapping[str, Any] | None = None) -> bytes:
+    """Return the node's canonical bytes: ``canonical_dumps({content, links})``."""
+    return canonical_dumps({"content": content, "links": normalize_links(links)})
+
+
 def compute_cid(content: Any, links: Mapping[str, Any] | None = None) -> bytes:
     """Return the node's CID: ``sha256(canonical_dumps({content, links}))``."""
-    return sha256_hash(canonical_dumps({"content": content, "links": normalize_links(links)}))
+    return sha256_hash(encode_node(content, links))
 
 
 def iter_link_cids(links: Mapping[str, Any]) -> Iterator[bytes]:
@@ -93,19 +98,47 @@ def verify(
         current = stack.pop()
         if current in seen or current in checked:
             continue
-        node = resolve(current)
-        if node is None:
+        try:
+            node = resolve(current)
+            if node is None:
+                return Err(
+                    record_kind="node",
+                    record_key=current.hex(),
+                    property_violated="dangling_link",
+                    expected=current.hex(),
+                    actual=None,
+                    message=f"dangling link: no node found at CID {current.hex()}",
+                )
+            content, links = node
+            normalized = normalize_links(links)
+            recomputed = compute_cid(content, normalized)
+        except CanonicalEncodingError as exc:
+            # Stored content the encoder rejects (for example, nested past
+            # MAX_DEPTH) was altered after it was recorded. Report it like any
+            # other tamper finding. The exception text can quote stored
+            # values, so only its type goes into the message. This handler
+            # must precede the ValueError one: CanonicalEncodingError is a
+            # ValueError.
             return Err(
                 record_kind="node",
                 record_key=current.hex(),
-                property_violated="dangling_link",
-                expected=current.hex(),
+                property_violated="canonical_encoding_error",
+                expected="content that can be canonically encoded",
                 actual=None,
-                message=f"dangling link: no node found at CID {current.hex()}",
+                message=(
+                    f"node at {current.hex()} cannot be canonically encoded "
+                    f"({type(exc).__name__}), so its CID cannot be recomputed"
+                ),
             )
-        content, links = node
-        normalized = normalize_links(links)
-        recomputed = compute_cid(content, normalized)
+        except (ValueError, TypeError) as exc:
+            return Err(
+                record_kind="node",
+                record_key=current.hex(),
+                property_violated="malformed_node",
+                expected="a node that can be re-assembled for hashing",
+                actual=str(exc),
+                message=f"node {current.hex()} could not be re-assembled for hashing: {exc}",
+            )
         if recomputed != current:
             return Err(
                 record_kind="node",
@@ -124,7 +157,12 @@ def verify(
     return Ok()
 
 
-def commit_entry_hash(cid: bytes, recorded_at: datetime, prev: bytes) -> bytes:
+def commit_entry_hash(cid: bytes, recorded_at: datetime, prev: bytes, principal: str) -> bytes:
     """Hash of one commit-log entry, chaining ``prev`` (the previous entry's
-    hash, or ``ZERO_PREV`` at the head of the log)."""
-    return sha256_hash(canonical_dumps({"cid": cid, "recorded_at": recorded_at, "prev": prev}))
+    hash, or ``ZERO_PREV`` at the head of the log). ``principal`` is the identity
+    AITS authenticated for the request, so rewriting it breaks the chain."""
+    return sha256_hash(
+        canonical_dumps(
+            {"cid": cid, "recorded_at": recorded_at, "prev": prev, "principal": principal}
+        )
+    )

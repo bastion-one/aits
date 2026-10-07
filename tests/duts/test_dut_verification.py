@@ -32,6 +32,7 @@ def test_tampered_output_fails_verify(client: TestClient, session: Session) -> N
 
 
 def test_deleted_artifact_dangles_the_dut(client: TestClient, session: Session) -> None:
+    """Reject a DUT proof whose referenced evidence has disappeared from storage."""
     agent = make_agent(client)
     config = make_config(client)
     artifact = make_artifact(client)

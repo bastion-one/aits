@@ -18,7 +18,7 @@ from ..db import SessionDep
 from ..ledger import record
 from ..models import AgentConfig, Artifact, DataUniqueTag
 from ..nodes import hex_cid_list
-from .common import cid_from_hex, ensure_aware, get_agent_row
+from .common import MAX_ITEMS, Label, LongText, cid_from_hex, ensure_aware, get_agent_row
 
 router = APIRouter(tags=["duts"])
 
@@ -26,16 +26,18 @@ router = APIRouter(tags=["duts"])
 class DUTCreate(BaseModel):
     agent_uuid: UUID
     config_cid: str = Field(description="hex CID of the behavioral AgentConfig used")
-    span_id: str = Field(description="runtime span handle, assigned at span start")
-    business_object_keys: list[str] = Field(default_factory=list)
+    span_id: Label = Field(description="runtime span handle, assigned at span start")
+    business_object_keys: list[Label] = Field(default_factory=list, max_length=MAX_ITEMS)
     sequence: int
-    input_context: str
-    agent_output: str
+    input_context: LongText
+    agent_output: LongText
     occurred_at: datetime | None = Field(
         default=None, description="self-asserted event time; defaults to server now"
     )
     artifact_cids: list[str] = Field(
-        default_factory=list, description="hex CIDs of the byte artifacts touched"
+        default_factory=list,
+        max_length=MAX_ITEMS,
+        description="hex CIDs of the byte artifacts touched",
     )
 
 
@@ -69,7 +71,7 @@ class DUTRead(BaseModel):
 
 def build_dut_row(session, body: DUTCreate) -> DataUniqueTag:
     """Validate a DUT submission's references and assemble the (uncommitted)
-    span row. Shared by ``POST /duts/`` and the lineage ``record`` entry point."""
+    span row. Shared by ``POST /duts/`` and inline lineage node creation."""
     agent = get_agent_row(session, body.agent_uuid)
     config_cid = cid_from_hex(body.config_cid, field="config_cid")
     if session.get(AgentConfig, config_cid) is None:

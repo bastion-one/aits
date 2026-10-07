@@ -30,6 +30,7 @@ def test_compute_cid_deterministic_and_content_sensitive() -> None:
 
 
 def test_role_names_are_part_of_identity() -> None:
+    """Give ancestry and provenance links distinct identities even with the same target."""
     content = {"type": "X"}
     assert dag.compute_cid(content, {"prev": CID_A}) != dag.compute_cid(
         content, {"derived_from": CID_A}
@@ -93,7 +94,24 @@ def test_verify_reports_tampered_node() -> None:
     assert result.property_violated == "cid_mismatch"
 
 
+def test_verify_reports_a_malformed_linked_node_against_itself() -> None:
+    store: dict = {}
+    leaf = _put(store, {"type": "leaf"})
+    root = _put(store, {"type": "root"}, {"child": leaf})
+
+    def resolve(cid: bytes):
+        if cid == leaf:
+            raise ValueError("corrupt column")
+        return store.get(cid)
+
+    result = dag.verify(root, resolve)
+    assert result.is_err
+    assert result.property_violated == "malformed_node"
+    assert result.record_key == leaf.hex()
+
+
 def test_verify_memoizes_across_calls() -> None:
+    """Resolve shared ancestors once and reuse successful verification across calls."""
     store: dict = {}
     calls = 0
 
@@ -118,6 +136,7 @@ def test_verify_memoizes_across_calls() -> None:
 
 
 def test_verify_failure_does_not_poison_the_cache() -> None:
+    """Keep a graph with missing evidence out of the successful-verification cache."""
     store: dict = {}
     leaf = _put(store, {"type": "leaf"})
     root = _put(store, {"type": "root"}, {"child": leaf})
@@ -129,8 +148,39 @@ def test_verify_failure_does_not_poison_the_cache() -> None:
 
 def test_commit_entry_hash_covers_every_field() -> None:
     when = datetime(2026, 6, 10, 9, 0, tzinfo=timezone.utc)
-    base = dag.commit_entry_hash(CID_A, when, ZERO_PREV)
-    assert dag.commit_entry_hash(CID_A, when, ZERO_PREV) == base
-    assert dag.commit_entry_hash(CID_B, when, ZERO_PREV) != base
-    assert dag.commit_entry_hash(CID_A, when.replace(minute=1), ZERO_PREV) != base
-    assert dag.commit_entry_hash(CID_A, when, sha256_hash(b"prev")) != base
+    base = dag.commit_entry_hash(CID_A, when, ZERO_PREV, "svc")
+    assert dag.commit_entry_hash(CID_A, when, ZERO_PREV, "svc") == base
+    assert dag.commit_entry_hash(CID_B, when, ZERO_PREV, "svc") != base
+    assert dag.commit_entry_hash(CID_A, when.replace(minute=1), ZERO_PREV, "svc") != base
+    assert dag.commit_entry_hash(CID_A, when, sha256_hash(b"prev"), "svc") != base
+    assert dag.commit_entry_hash(CID_A, when, ZERO_PREV, "other") != base
+
+
+def _over_nested(levels: int = 70) -> dict:
+    value: dict = {}
+    for _ in range(levels - 1):
+        value = {"a": value}
+    return value
+
+
+def test_verify_reports_unencodable_stored_content() -> None:
+    """Content that can no longer be encoded is a tamper finding, not an exception."""
+    store = {CID_A: ({"type": "X", "metadata": _over_nested()}, {})}
+    result = dag.verify(CID_A, _store_resolver(store))
+    assert result.is_err
+    assert result.record_kind == "node"
+    assert result.record_key == CID_A.hex()
+    assert result.property_violated == "canonical_encoding_error"
+    assert result.actual is None
+    assert "'a'" not in result.message and "metadata" not in result.message
+
+
+def test_verify_through_a_link_names_the_unencodable_node_and_caches_nothing() -> None:
+    store = {CID_A: ({"type": "X", "metadata": _over_nested()}, {})}
+    parent = _put(store, {"type": "P"}, {"config": CID_A})
+    verified: set[bytes] = set()
+    result = dag.verify(parent, _store_resolver(store), verified)
+    assert result.is_err
+    assert result.record_key == CID_A.hex()
+    assert result.property_violated == "canonical_encoding_error"
+    assert not verified, "a failed walk must not mark partially checked nodes verified"

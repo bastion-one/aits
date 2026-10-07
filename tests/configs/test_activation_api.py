@@ -26,6 +26,7 @@ def test_first_activation_sets_the_active_config(client: TestClient) -> None:
 
 
 def test_stale_head_is_rejected(client: TestClient) -> None:
+    """Model competing writers so an outdated activation head cannot win an update."""
     agent = make_agent(client)
     config = make_config(client)
     first = _activate(client, agent["uuid"], config["cid"], None).json()
@@ -40,6 +41,7 @@ def test_stale_head_is_rejected(client: TestClient) -> None:
 def test_revert_reuses_the_config_cid_but_appends_a_new_activation(
     client: TestClient,
 ) -> None:
+    """Preserve activation history when an agent returns to an earlier configuration."""
     agent = make_agent(client)
     y1 = make_config(client, system_prompt="v1")
     y2 = make_config(client, system_prompt="v2")
@@ -69,6 +71,7 @@ def test_no_activation_means_no_active_config(client: TestClient) -> None:
 
 
 def test_set_config_dedupes_and_chains_without_cas(client: TestClient) -> None:
+    """Keep repeated settings idempotent while recording changes and reversions."""
     agent = make_agent(client)
     first = client.put(f"/agents/{agent['uuid']}/config/", json={"system_prompt": "v1"})
     assert first.status_code == 200, first.text
@@ -97,3 +100,23 @@ def test_activation_requires_known_agent_and_config(client: TestClient) -> None:
     assert missing_agent.status_code == 404
     missing_config = _activate(client, agent["uuid"], "0" * 64, None)
     assert missing_config.status_code == 404
+
+
+def test_activation_cids_accept_case_and_reject_whitespace(client: TestClient) -> None:
+    agent = make_agent(client)
+    config = make_config(client)
+    first = _activate(client, agent["uuid"], config["cid"].upper(), None)
+    assert first.status_code == 201, first.text
+    assert first.json()["config_cid"] == config["cid"]
+
+    other = make_config(client, system_prompt="other")
+    second = _activate(client, agent["uuid"], other["cid"], first.json()["cid"].upper())
+    assert second.status_code == 201, second.text
+    assert second.json()["config_cid"] == other["cid"]
+
+    spaced_config = " ".join(config["cid"][i : i + 2] for i in range(0, 64, 2))
+    assert _activate(client, agent["uuid"], spaced_config, None).status_code == 400
+    spaced_head = " ".join(second.json()["cid"][i : i + 2] for i in range(0, 64, 2))
+    rejected = _activate(client, agent["uuid"], config["cid"], spaced_head)
+    assert rejected.status_code == 400
+    assert "expected_head" in rejected.json()["detail"]

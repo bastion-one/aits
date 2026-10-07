@@ -1,27 +1,44 @@
 #!/usr/bin/env python3
-"""Render the AITS ledger as one self-contained HTML page (stdlib only).
+"""Render the AITS ledger as one self-contained HTML page.
 
-Fetches sessions, lineage nodes, DUT content, observation times, and frontier
-verification verdicts from a running ledger, and writes a single static HTML
-file with everything embedded -- no server, no JS dependencies, shareable.
-The page opens with an interactive canvas of the DAG (pan, zoom, click a node
-for its content; sessions are swim-lanes, dashed blue edges are handoffs),
+Fetches lineage graphs, lineage nodes, DUT content, observation times, and
+frontier verification verdicts from a running ledger through the generated
+``aits-client`` SDK, and writes a single static HTML file with everything
+embedded -- no server, no JS dependencies, shareable. The page opens with an
+interactive canvas of the DAG (pan, zoom, click a node for its content;
+lineage graphs are swim-lanes, dashed blue edges are cross-graph handoffs),
 followed by the full per-node detail cards.
 
-    python3 tools/aits_view.py                  # all sessions -> aits-view.html, opened
-    python3 tools/aits_view.py <session_uuid>   # just one session
-    python3 tools/aits_view.py --url http://other:8000 --out /tmp/x.html --no-open
+The SDK is generated on demand and is not a project dependency, so run this
+through ``make view`` (regenerates the client and installs it for this run
+only) rather than invoking the file directly:
+
+    make view                                          # all graphs -> aits-view.html, opened
+    make view AITS_VIEW_ARGS=<root_cid>                # just one graph
+    make view AITS_VIEW_ARGS='--url http://other:8000 --out /tmp/x.html --no-open'
 """
 
 import argparse
 import html
 import json
+import os
 import subprocess
 import sys
-import urllib.request
 import webbrowser
 from datetime import datetime
 from pathlib import Path
+
+try:
+    from aits_client import AgentsApi, ApiClient, AuditApi, Configuration, DutsApi, LineageApi
+except ImportError:
+    sys.exit(
+        "error: the generated aits-client SDK is not installed.\n\n"
+        "This script reads the ledger through the generated Python client, which is\n"
+        "built on demand -- clients/python/ is ephemeral and gitignored. Run it via:\n\n"
+        "    make view\n\n"
+        "which regenerates the client and installs it for this run only. See the\n"
+        "'Generated client' section in README.md."
+    )
 
 STYLE = """
 body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; margin: 0;
@@ -241,15 +258,10 @@ resize(); fit(); showPanel();
 """
 
 
-def fetch(base: str, path: str):
-    with urllib.request.urlopen(base + path, timeout=10) as resp:
-        return json.loads(resp.read())
-
-
-def when(iso: str | None) -> str:
-    if not iso:
+def when(dt: datetime | None) -> str:
+    if not dt:
         return "?"
-    return datetime.fromisoformat(iso.replace("Z", "+00:00")).strftime("%H:%M:%S")
+    return dt.strftime("%H:%M:%S")
 
 
 def esc(value) -> str:
@@ -257,26 +269,37 @@ def esc(value) -> str:
     return html.escape(text)
 
 
-def load(base: str, only_session: str | None) -> dict:
-    sessions = fetch(base, "/lineage/?limit=500")
-    if only_session:
-        sessions = [s for s in sessions if s["session_uuid"] == only_session]
-        if not sessions:
-            sys.exit(f"session not found in ledger: {only_session}")
-    agents = {a["cid"]: a for a in fetch(base, "/agents/")}
-    recorded = {}
-    for entry in fetch(base, "/commits/?limit=100000"):
-        recorded.setdefault(entry["cid"], entry["recorded_at"])
-    duts, verdicts = {}, {}
-    for summary in sessions:
-        detail = fetch(base, f"/lineage/{summary['session_uuid']}/")
-        summary["detail"] = detail["nodes"]
-        for node in detail["nodes"]:
-            if node["dut"] and node["dut"] not in duts:
-                duts[node["dut"]] = fetch(base, f"/duts/{node['dut']}/")
-        for cid in detail["frontier"]:
-            verdicts[cid] = fetch(base, f"/verify/{cid}/")
-        summary["frontier_cids"] = detail["frontier"]
+def load(base: str, only_root: str | None, api_key: str | None) -> dict:
+    with ApiClient(Configuration(host=base, access_token=api_key or None)) as client:
+        lineage_api = LineageApi(client)
+        agents_api = AgentsApi(client)
+        duts_api = DutsApi(client)
+        audit_api = AuditApi(client)
+
+        sessions = [s.to_dict() for s in lineage_api.list_roots(limit=500)]
+        if only_root:
+            sessions = [s for s in sessions if s["root"] == only_root]
+            if not sessions:
+                sys.exit(f"root not found in ledger: {only_root}")
+        agents = {}
+        while page := agents_api.list_all(limit=1000, offset=len(agents)):
+            agents.update((a.cid, a.to_dict()) for a in page)
+        recorded, after_seq = {}, None
+        while page := audit_api.commits(after_seq=after_seq, limit=1000):
+            for entry in page:
+                entry = entry.to_dict()
+                recorded.setdefault(entry["cid"], entry["recorded_at"])
+            after_seq = page[-1].seq
+        duts, verdicts = {}, {}
+        for summary in sessions:
+            detail = lineage_api.get_lineage_graph(summary["root"]).to_dict()
+            summary["detail"] = detail["nodes"]
+            for node in detail["nodes"]:
+                if node["dut"] and node["dut"] not in duts:
+                    duts[node["dut"]] = duts_api.get(node["dut"]).to_dict()
+            for cid in detail["frontier"]:
+                verdicts[cid] = audit_api.verify(cid).to_dict()
+            summary["frontier_cids"] = detail["frontier"]
     return {
         "sessions": sessions,
         "agents": agents,
@@ -342,7 +365,7 @@ def build_graph(data: dict) -> dict:
         max_depth = max(depth.values(), default=0)
         lanes.append(
             {
-                "label": f"session {s['session_uuid']}",
+                "label": f"graph {s['root'][:12]}",
                 "y": y_base,
                 "maxX": 40 + (max_depth + 1) * cell_w,
             }
@@ -403,7 +426,7 @@ def render(data: dict, base: str) -> str:
     for s in data["sessions"]:
         ok = all(data["verdicts"][c]["valid"] for c in s["frontier_cids"])
         out.append(
-            f'<a href="#s-{s["session_uuid"]}">{s["session_uuid"]}</a> '
+            f'<a href="#s-{s["root"]}">{s["root"][:12]}</a> '
             f'— {s["nodes"]} nodes, last {when(s["last_occurred_at"])} '
             f'<span class="badge {"ok" if ok else "bad"}">{"verified" if ok else "TAMPERED"}</span><br>'
         )
@@ -415,8 +438,8 @@ def render(data: dict, base: str) -> str:
             if ok
             else '<span class="badge bad">VERIFICATION FAILED</span>'
         )
-        out.append(f'<div class="session" id="s-{s["session_uuid"]}">')
-        out.append(f'<h2>session {s["session_uuid"]} {verdict}</h2>')
+        out.append(f'<div class="session" id="s-{s["root"]}">')
+        out.append(f'<h2>graph {s["root"][:12]} {verdict}</h2>')
         out.append(
             f'<div class="meta">{s["nodes"]} nodes · {when(s["started_at"])} → '
             f'{when(s["last_occurred_at"])} · frontier {", ".join(c[:12] for c in s["frontier_cids"])}'
@@ -439,13 +462,18 @@ def render(data: dict, base: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("session", nargs="?", help="render only this session uuid")
+    parser.add_argument("root", nargs="?", help="render only the lineage graph with this root CID")
     parser.add_argument("--url", default="http://127.0.0.1:8000", help="ledger base URL")
+    parser.add_argument(
+        "--api-key",
+        default=os.environ.get("AITS_API_KEY"),
+        help="service key for an authenticated ledger (default: $AITS_API_KEY)",
+    )
     parser.add_argument("--out", default="aits-view.html", help="output HTML path")
     parser.add_argument("--no-open", action="store_true", help="do not open in a browser")
     args = parser.parse_args()
 
-    data = load(args.url, args.session)
+    data = load(args.url, args.root, args.api_key)
     out = Path(args.out)
     out.write_text(render(data, args.url))
     total = sum(s["nodes"] for s in data["sessions"])

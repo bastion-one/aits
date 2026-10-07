@@ -15,6 +15,7 @@ path. The SDK must already be built (``make regen``); if it isn't,
 from __future__ import annotations
 
 import os
+import secrets
 import socket
 import subprocess
 import sys
@@ -31,6 +32,9 @@ aits_client = pytest.importorskip(
     "aits_client",
     reason="aits-client SDK is not installed; run `make regen` first",
 )
+
+SERVICE_KEY = secrets.token_urlsafe(32)
+"""The spawned server's only service key; the SDK presents it as a Bearer token."""
 
 
 def _free_port() -> int:
@@ -61,7 +65,12 @@ def base_url() -> Iterator[str]:
 
     with tempfile.TemporaryDirectory(prefix="bastion-integ-") as db_dir:
         db_path = Path(db_dir) / "test.db"
-        env = {**os.environ, "DATABASE_URL": f"sqlite:///{db_path}"}
+        env = {
+            **os.environ,
+            "DATABASE_URL": f"sqlite:///{db_path}",
+            "AUTH_SERVICE_KEYS": f"integration:{SERVICE_KEY}",
+            "AUTH_DISABLED": "false",
+        }
         # Not a `with`: the process must outlive this scope until `yield`, and
         # the finally below does a proper terminate/kill/wait that Popen's own
         # __exit__ (which only waits) would not.
@@ -111,6 +120,6 @@ def base_url() -> Iterator[str]:
 
 @pytest.fixture(scope="module")
 def api_client(base_url: str) -> Iterator[aits_client.ApiClient]:
-    cfg = aits_client.Configuration(host=base_url)
+    cfg = aits_client.Configuration(host=base_url, access_token=SERVICE_KEY)
     with aits_client.ApiClient(cfg) as ac:
         yield ac

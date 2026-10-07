@@ -1,4 +1,4 @@
-"""Database engine + ``SessionDep`` FastAPI dependency.
+"""Database engine and ordinary/audit session dependencies.
 
 The aware-UTC contract for ``created_at`` is enforced by
 :class:`app.types.UTCDateTime` (a SQLAlchemy ``TypeDecorator``), not by
@@ -14,6 +14,7 @@ from fastapi import Depends
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
+from . import ledger
 from .config import get_settings
 
 
@@ -46,11 +47,46 @@ def init_db() -> None:
     from . import models  # pylint: disable=import-outside-toplevel,unused-import
 
     SQLModel.metadata.create_all(engine)
-
-
-def get_session() -> Iterator[Session]:
     with Session(engine) as session:
+        ledger.init_ledger(session)
+
+
+def get_engine() -> Engine:
+    """Supply the database engine to session dependencies."""
+    return engine
+
+
+EngineDep = Annotated[Engine, Depends(get_engine)]
+
+
+def get_session(bind: EngineDep) -> Iterator[Session]:
+    with Session(bind) as session:
         yield session
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
+
+
+def get_audit_session(bind: EngineDep) -> Iterator[Session]:
+    """One committed read snapshot for every query in a full audit.
+
+    The first data read establishes the snapshot. SQLite needs an explicit
+    BEGIN because its driver's legacy mode does not begin on SELECT.
+    """
+    with Session(bind, autoflush=False) as session:
+        try:
+            if bind.dialect.name == "postgresql":
+                session.connection(
+                    execution_options={
+                        "isolation_level": "REPEATABLE READ",
+                        "postgresql_readonly": True,
+                    }
+                )
+            elif bind.dialect.name == "sqlite":
+                session.connection().exec_driver_sql("BEGIN")
+            yield session
+        finally:
+            session.rollback()
+
+
+AuditSessionDep = Annotated[Session, Depends(get_audit_session)]

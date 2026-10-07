@@ -1,5 +1,5 @@
 """Step-wise integration test of the content-addressed flow: agent genesis ->
-behavioral config -> activation -> artifact -> DUT span -> session DAG with a
+behavioral config -> activation -> artifact -> DUT span -> lineage DAG with a
 two-sub-agent merge -> verify -> watermark -> traceback -> audit.
 
 Hits the spawned ``app.main:app`` server (see this directory's ``conftest.py``)
@@ -9,6 +9,7 @@ focused.
 """
 
 import hashlib
+from datetime import datetime
 
 import pytest
 
@@ -22,7 +23,7 @@ pytestmark = pytest.mark.integration
 OCCURRED_AT = "2026-06-10T09:01:00+00:00"
 
 
-# --- API handle fixtures -----------------------------------------------------
+# API handle fixtures.
 
 
 @pytest.fixture(scope="module")
@@ -62,7 +63,7 @@ def audit(api_client: boc.ApiClient) -> boc.AuditApi:
     return boc.AuditApi(api_client)
 
 
-# --- workflow fixtures (each step's resource is the next step's input) -------
+# Workflow fixtures: each step supplies resources to the next step.
 
 
 @pytest.fixture(scope="module")
@@ -120,16 +121,18 @@ def _make_dut(
     )
 
 
-def _session_with_round(lineage: boc.LineageApi, actor: str, dut: boc.DUTRead) -> boc.LineageRead:
-    genesis = lineage.start_session(boc.SessionCreate(actor_id=actor, step_id="s"))
-    return lineage.append(
-        genesis.session_uuid,
-        boc.AppendCreate(
+def _graph_with_round(lineage: boc.LineageApi, actor: str, dut: boc.DUTRead) -> boc.LineageNodeRead:
+    genesis = lineage.create_root(
+        boc.LineageRootCreate(actor_id=actor, step_id="s", transformation="root")
+    )
+    return lineage.create_lineage_node(
+        genesis.cid,
+        boc.LineageNodeCreate(
             actor_id=actor,
             step_id="s",
             transformation="work",
             prev=[genesis.cid],
-            dut=dut.cid,
+            dut_cid=dut.cid,
         ),
     )
 
@@ -140,8 +143,8 @@ def head_a(
     lineage: boc.LineageApi,
     agent: boc.AgentRead,
     config: boc.ConfigRead,
-) -> boc.LineageRead:
-    return _session_with_round(
+) -> boc.LineageNodeRead:
+    return _graph_with_round(
         lineage, "sub-A", _make_dut(duts, agent, config, span_id="a1", output="PO-88")
     )
 
@@ -152,8 +155,8 @@ def head_b(
     lineage: boc.LineageApi,
     agent: boc.AgentRead,
     config: boc.ConfigRead,
-) -> boc.LineageRead:
-    return _session_with_round(
+) -> boc.LineageNodeRead:
+    return _graph_with_round(
         lineage, "sub-B", _make_dut(duts, agent, config, span_id="b1", output="ACME Corp")
     )
 
@@ -165,9 +168,9 @@ def merge(
     agent: boc.AgentRead,
     config: boc.ConfigRead,
     artifact: boc.ArtifactRead,
-    head_a: boc.LineageRead,
-    head_b: boc.LineageRead,
-) -> boc.LineageRead:
+    head_a: boc.LineageNodeRead,
+    head_b: boc.LineageNodeRead,
+) -> boc.LineageNodeRead:
     merge_dut = _make_dut(
         duts,
         agent,
@@ -176,27 +179,53 @@ def merge(
         output="pay ACME Corp 4400.00 ref PO-88",
         artifact_cids=[artifact.cid],
     )
-    genesis = lineage.start_session(boc.SessionCreate(actor_id="super", step_id="s"))
-    return lineage.append(
-        genesis.session_uuid,
-        boc.AppendCreate(
+    genesis = lineage.create_root(
+        boc.LineageRootCreate(actor_id="super", step_id="s", transformation="root")
+    )
+    return lineage.create_lineage_node(
+        genesis.cid,
+        boc.LineageNodeCreate(
             actor_id="super",
             step_id="s",
             transformation="Summarization",
             prev=[genesis.cid],
-            derived_from=[head_a.cid, head_b.cid],
-            dut=merge_dut.cid,
+            derived_from=[head_a.node.cid, head_b.node.cid],
+            dut_cid=merge_dut.cid,
         ),
     )
 
 
-# --- step-wise tests ---------------------------------------------------------
+@pytest.fixture(scope="module")
+def structural(
+    lineage: boc.LineageApi, merge: boc.LineageNodeRead
+) -> tuple[boc.LineageRead, boc.LineageNodeRead]:
+    """A structural node under a fresh root, plus HTTP-info for Location."""
+    genesis = lineage.create_root(
+        boc.LineageRootCreate(actor_id="struct", step_id="s", transformation="root")
+    )
+    created = lineage.create_lineage_node_with_http_info(
+        genesis.cid,
+        boc.LineageNodeCreate(
+            actor_id="struct",
+            step_id="s",
+            transformation="note",
+            prev=[genesis.cid],
+        ),
+    )
+    return genesis, created
+
+
+# Step-by-step workflow assertions.
 
 
 def test_create_agent(agent: boc.AgentRead, run_id: str) -> None:
     assert agent.cid
     assert agent.uuid
     assert agent.name == f"alpha-{run_id[:8]}"
+    assert (
+        not hasattr(agent, "current_session_uuid")
+        or getattr(agent, "current_session_uuid", None) is None
+    )
 
 
 def test_config_dedupes_on_content(
@@ -256,34 +285,89 @@ def test_dut_replay_dedupes_but_observations_count(
 
 
 def test_merge_links_both_sub_agents(
-    merge: boc.LineageRead, head_a: boc.LineageRead, head_b: boc.LineageRead
+    merge: boc.LineageNodeRead, head_a: boc.LineageNodeRead, head_b: boc.LineageNodeRead
 ) -> None:
-    assert sorted(merge.derived_from) == sorted([head_a.cid, head_b.cid])
+    assert sorted(merge.node.derived_from) == sorted([head_a.node.cid, head_b.node.cid])
+    assert merge.dut is not None
+    assert merge.node.dut == merge.dut.cid
 
 
-def test_verify_recurses_the_whole_story(audit: boc.AuditApi, merge: boc.LineageRead) -> None:
-    verdict = audit.verify(merge.cid)
+def test_verify_recurses_the_whole_story(audit: boc.AuditApi, merge: boc.LineageNodeRead) -> None:
+    """Verify the assembled workflow through the generated SDK and running HTTP service."""
+    verdict = audit.verify(merge.node.cid)
     assert verdict.valid is True
     assert verdict.property_violated is None
 
 
-def test_watermark_renders_off_the_merge(lineage: boc.LineageApi, merge: boc.LineageRead) -> None:
-    wm = lineage.watermark(merge.cid).watermark
+def test_watermark_renders_off_the_merge(
+    lineage: boc.LineageApi, merge: boc.LineageNodeRead
+) -> None:
+    wm = lineage.watermark(merge.node.cid).watermark
     assert "_Transformation:[Summarization]_" in wm
 
 
 def test_traceback_reaches_both_sub_agents(
-    lineage: boc.LineageApi, merge: boc.LineageRead, config: boc.ConfigRead
+    lineage: boc.LineageApi, merge: boc.LineageNodeRead, config: boc.ConfigRead
 ) -> None:
-    steps = lineage.trace_back(merge.cid)
+    """Expose both consumed outputs and their configuration attribution through the SDK."""
+    steps = lineage.trace_back(merge.node.cid)
     outputs = {s.agent_output for s in steps}
     assert {"PO-88", "ACME Corp", "pay ACME Corp 4400.00 ref PO-88"} <= outputs
     assert all(s.config_cid == config.cid for s in steps)
 
 
-def test_frontier_is_the_merge_node(lineage: boc.LineageApi, merge: boc.LineageRead) -> None:
-    session_read = lineage.get_session_nodes(merge.session_uuid)
-    assert session_read.frontier == [merge.cid]
+def test_frontier_is_the_merge_node(lineage: boc.LineageApi, merge: boc.LineageNodeRead) -> None:
+    graph = lineage.get_lineage_graph(merge.root)
+    assert graph.frontier == [merge.node.cid]
+    assert graph.root == merge.root
+
+
+def test_structural_node_has_null_dut_and_location(
+    structural: tuple[boc.LineageRead, object],
+) -> None:
+    """Preserve an absent DUT and the created-node URL through SDK deserialization."""
+    genesis, created = structural
+    assert created.data.dut is None
+    assert created.data.node.dut is None
+    assert created.data.root == genesis.cid
+    location = created.headers.get("Location") or created.headers.get("location")
+    assert location == f"/lineage/nodes/{created.data.node.cid}/"
+
+
+def test_inline_dut_mode(
+    lineage: boc.LineageApi, duts: boc.DutsApi, agent: boc.AgentRead, config: boc.ConfigRead
+) -> None:
+    """Exercise SDK serialization of a nested DUT and read back its enclosing lineage node."""
+    genesis = lineage.create_root(
+        boc.LineageRootCreate(actor_id=agent.name, step_id="s", transformation="root")
+    )
+    created = lineage.create_lineage_node(
+        genesis.cid,
+        boc.LineageNodeCreate(
+            actor_id=agent.name,
+            step_id="s",
+            transformation="inline",
+            prev=[genesis.cid],
+            occurred_at=OCCURRED_AT,
+            dut=boc.InlineDUTCreate(
+                agent_uuid=agent.uuid,
+                span_id="inline-1",
+                input_context="prompt",
+                agent_output="completion",
+                config_cid=config.cid,
+                business_object_keys=["INV-4471", "PO-88"],
+                occurred_at="2026-06-09T23:30:01.123456+00:00",
+            ),
+        ),
+    )
+    assert created.dut is not None
+    assert created.dut.agent_output == "completion"
+    assert created.dut.business_object_keys == ["INV-4471", "PO-88"]
+    assert created.dut.occurred_at == datetime.fromisoformat("2026-06-09T23:30:01.123456+00:00")
+    assert created.node.occurred_at == datetime.fromisoformat(OCCURRED_AT)
+    assert duts.get(created.dut.cid) == created.dut
+    resolved = lineage.get_lineage_node(created.node.cid)
+    assert resolved.root == genesis.cid
 
 
 def test_artifact_lookup_by_byte_digest(

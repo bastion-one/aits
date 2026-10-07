@@ -76,6 +76,7 @@
             "description": "Optional starting config; recorded (dedup) and activated in the same call"
           },
           "name": {
+            "maxLength": 2048,
             "title": "Name",
             "type": "string"
           }
@@ -108,18 +109,6 @@
             "title": "Created At",
             "type": "string"
           },
-          "current_session_uuid": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current Session Uuid"
-          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -135,132 +124,15 @@
           "uuid",
           "name",
           "created_at",
-          "active_config_cid",
-          "current_session_uuid"
+          "active_config_cid"
         ],
         "title": "AgentRead",
-        "type": "object"
-      },
-      "AgentRecordCreate": {
-        "description": "One round of this agent's work; identity and session come from the path\nand the agent's state. ``actor_id`` defaults to the agent's name,\n``step_id`` to the ``span_id``.",
-        "properties": {
-          "actor_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Actor Id"
-          },
-          "agent_output": {
-            "title": "Agent Output",
-            "type": "string"
-          },
-          "artifact_cids": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Artifact Cids",
-            "type": "array"
-          },
-          "business_object_keys": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Business Object Keys",
-            "type": "array"
-          },
-          "config_cid": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "hex CID of the config used; defaults to the agent's active one",
-            "title": "Config Cid"
-          },
-          "input_context": {
-            "title": "Input Context",
-            "type": "string"
-          },
-          "occurred_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Occurred At"
-          },
-          "prev": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Prev"
-          },
-          "sequence": {
-            "default": 0,
-            "title": "Sequence",
-            "type": "integer"
-          },
-          "span_id": {
-            "description": "runtime span handle, assigned at span start",
-            "title": "Span Id",
-            "type": "string"
-          },
-          "step_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Step Id"
-          },
-          "transformation": {
-            "title": "Transformation",
-            "type": "string"
-          },
-          "used_sessions": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "title": "Used Sessions",
-            "type": "array"
-          }
-        },
-        "required": [
-          "span_id",
-          "input_context",
-          "agent_output",
-          "transformation"
-        ],
-        "title": "AgentRecordCreate",
         "type": "object"
       },
       "AgentUpdate": {
         "properties": {
           "name": {
+            "maxLength": 2048,
             "title": "Name",
             "type": "string"
           }
@@ -274,10 +146,12 @@
       "AliasCreate": {
         "properties": {
           "alias": {
+            "maxLength": 2048,
             "title": "Alias",
             "type": "string"
           },
           "source": {
+            "maxLength": 2048,
             "title": "Source",
             "type": "string"
           }
@@ -336,71 +210,6 @@
         "title": "AliasResolveRead",
         "type": "object"
       },
-      "AppendCreate": {
-        "properties": {
-          "actor_id": {
-            "title": "Actor Id",
-            "type": "string"
-          },
-          "derived_from": {
-            "description": "hex CIDs of cross-session inputs: another session's head node(s) or DUTs",
-            "items": {
-              "type": "string"
-            },
-            "title": "Derived From",
-            "type": "array"
-          },
-          "dut": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "hex CID of the DUT this round produced",
-            "title": "Dut"
-          },
-          "occurred_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Occurred At"
-          },
-          "prev": {
-            "description": "hex CIDs of this node's intra-session causal predecessors",
-            "items": {
-              "type": "string"
-            },
-            "minItems": 1,
-            "title": "Prev",
-            "type": "array"
-          },
-          "step_id": {
-            "title": "Step Id",
-            "type": "string"
-          },
-          "transformation": {
-            "title": "Transformation",
-            "type": "string"
-          }
-        },
-        "required": [
-          "actor_id",
-          "step_id",
-          "transformation",
-          "prev"
-        ],
-        "title": "AppendCreate",
-        "type": "object"
-      },
       "ArtifactRead": {
         "properties": {
           "aliases": {
@@ -444,6 +253,7 @@
           "locator": {
             "anyOf": [
               {
+                "maxLength": 2048,
                 "type": "string"
               },
               {
@@ -504,6 +314,10 @@
             "title": "Nodes Checked",
             "type": "integer"
           },
+          "nodes_verified": {
+            "title": "Nodes Verified",
+            "type": "integer"
+          },
           "valid": {
             "title": "Valid",
             "type": "boolean"
@@ -512,6 +326,7 @@
         "required": [
           "valid",
           "nodes_checked",
+          "nodes_verified",
           "commit_entries",
           "failures"
         ],
@@ -523,6 +338,7 @@
           "alias": {
             "anyOf": [
               {
+                "maxLength": 2048,
                 "type": "string"
               },
               {
@@ -538,6 +354,7 @@
           },
           "source": {
             "default": "upload",
+            "maxLength": 2048,
             "title": "Source",
             "type": "string"
           }
@@ -562,6 +379,10 @@
             "title": "Prev Hash",
             "type": "string"
           },
+          "principal": {
+            "title": "Principal",
+            "type": "string"
+          },
           "recorded_at": {
             "format": "date-time",
             "title": "Recorded At",
@@ -577,7 +398,8 @@
           "cid",
           "recorded_at",
           "prev_hash",
-          "entry_hash"
+          "entry_hash",
+          "principal"
         ],
         "title": "CommitEntryRead",
         "type": "object"
@@ -595,11 +417,13 @@
             "type": "object"
           },
           "system_prompt": {
+            "maxLength": 1000000,
             "title": "System Prompt",
             "type": "string"
           },
           "tools": {
             "items": {},
+            "maxItems": 1000,
             "title": "Tools",
             "type": "array"
           }
@@ -649,6 +473,7 @@
       "DUTCreate": {
         "properties": {
           "agent_output": {
+            "maxLength": 1000000,
             "title": "Agent Output",
             "type": "string"
           },
@@ -662,13 +487,16 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 1000,
             "title": "Artifact Cids",
             "type": "array"
           },
           "business_object_keys": {
             "items": {
+              "maxLength": 2048,
               "type": "string"
             },
+            "maxItems": 1000,
             "title": "Business Object Keys",
             "type": "array"
           },
@@ -678,6 +506,7 @@
             "type": "string"
           },
           "input_context": {
+            "maxLength": 1000000,
             "title": "Input Context",
             "type": "string"
           },
@@ -700,6 +529,7 @@
           },
           "span_id": {
             "description": "runtime span handle, assigned at span start",
+            "maxLength": 2048,
             "title": "Span Id",
             "type": "string"
           }
@@ -806,6 +636,311 @@
         "title": "HealthStatus",
         "type": "object"
       },
+      "InlineDUTCreate": {
+        "additionalProperties": false,
+        "description": "DUT business fields for atomic inline creation with a lineage node.\n\n``config_cid`` defaults to the agent's activation head. ``occurred_at``\ndefaults to the enclosing LT event time. ``sequence`` is 0; business-key\nand artifact lists default empty. ``config_cid`` and each artifact CID\nmust be exactly 64 hexadecimal characters of either case.",
+        "properties": {
+          "agent_output": {
+            "maxLength": 1000000,
+            "title": "Agent Output",
+            "type": "string"
+          },
+          "agent_uuid": {
+            "format": "uuid",
+            "title": "Agent Uuid",
+            "type": "string"
+          },
+          "artifact_cids": {
+            "description": "hex CIDs of artifacts; each must be exactly 64 hexadecimal characters of either case",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Artifact Cids",
+            "type": "array"
+          },
+          "business_object_keys": {
+            "items": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Business Object Keys",
+            "type": "array"
+          },
+          "config_cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "hex CID of the behavioral AgentConfig; must be exactly 64 hexadecimal characters of either case when supplied",
+            "title": "Config Cid"
+          },
+          "input_context": {
+            "maxLength": 1000000,
+            "title": "Input Context",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "sequence": {
+            "default": 0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "span_id": {
+            "maxLength": 2048,
+            "title": "Span Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_uuid",
+          "span_id",
+          "input_context",
+          "agent_output"
+        ],
+        "title": "InlineDUTCreate",
+        "type": "object"
+      },
+      "LedgerHeadRead": {
+        "properties": {
+          "entry_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Hash"
+          },
+          "ledger_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledger Id"
+          },
+          "seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seq"
+          }
+        },
+        "required": [
+          "ledger_id",
+          "seq",
+          "entry_hash"
+        ],
+        "title": "LedgerHeadRead",
+        "type": "object"
+      },
+      "LineageGraphRead": {
+        "properties": {
+          "frontier": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Frontier",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/LineageRead"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "root": {
+            "description": "CID of the root LT that identifies this graph",
+            "title": "Root",
+            "type": "string"
+          }
+        },
+        "required": [
+          "root",
+          "nodes",
+          "frontier"
+        ],
+        "title": "LineageGraphRead",
+        "type": "object"
+      },
+      "LineageGraphSummary": {
+        "properties": {
+          "frontier": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Frontier",
+            "type": "array"
+          },
+          "last_occurred_at": {
+            "format": "date-time",
+            "title": "Last Occurred At",
+            "type": "string"
+          },
+          "nodes": {
+            "title": "Nodes",
+            "type": "integer"
+          },
+          "root": {
+            "title": "Root",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "root",
+          "nodes",
+          "started_at",
+          "last_occurred_at",
+          "frontier"
+        ],
+        "title": "LineageGraphSummary",
+        "type": "object"
+      },
+      "LineageNodeCreate": {
+        "additionalProperties": false,
+        "description": "Create a non-root lineage node under an existing root.\n\n``dut_cid`` and ``dut`` are mutually exclusive. Omit both for a\nstructural node; supply ``dut_cid`` to attach an existing DUT; supply\n``dut`` to create a DUT and this node in one transaction. Enforcement of\nthe mutual-exclusion rule is in the handler and returns 400.",
+        "properties": {
+          "actor_id": {
+            "maxLength": 2048,
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "derived_from": {
+            "description": "exact hex CIDs of cross-graph lineage nodes this round consumed",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Derived From",
+            "type": "array"
+          },
+          "dut": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InlineDUTCreate"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "inline DUT to create atomically with this node. Mutually exclusive with dut_cid; omit both for a structural node."
+          },
+          "dut_cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "hex CID of an existing DUT to attach. Mutually exclusive with dut; omit both for a structural node.",
+            "title": "Dut Cid"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "prev": {
+            "description": "hex CIDs of this node's intra-graph causal predecessors",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Prev",
+            "type": "array"
+          },
+          "step_id": {
+            "maxLength": 2048,
+            "title": "Step Id",
+            "type": "string"
+          },
+          "transformation": {
+            "maxLength": 2048,
+            "title": "Transformation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor_id",
+          "step_id",
+          "transformation",
+          "prev"
+        ],
+        "title": "LineageNodeCreate",
+        "type": "object"
+      },
+      "LineageNodeRead": {
+        "properties": {
+          "dut": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DUTRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "full DUT body when this node attaches a DUT; null for a structural node. Distinct from node.dut, which is a CID or null."
+          },
+          "node": {
+            "$ref": "#/components/schemas/LineageRead"
+          },
+          "root": {
+            "description": "path root LT CID; equals node.root after commit",
+            "title": "Root",
+            "type": "string"
+          }
+        },
+        "required": [
+          "root",
+          "node"
+        ],
+        "title": "LineageNodeRead",
+        "type": "object"
+      },
       "LineageRead": {
         "properties": {
           "actor_id": {
@@ -832,6 +967,7 @@
                 "type": "null"
               }
             ],
+            "description": "CID of the attached DUT, or null for a structural node",
             "title": "Dut"
           },
           "occurred_at": {
@@ -846,9 +982,9 @@
             "title": "Prev",
             "type": "array"
           },
-          "session_uuid": {
-            "format": "uuid",
-            "title": "Session Uuid",
+          "root": {
+            "description": "derived root LT CID for this node's prev ancestry",
+            "title": "Root",
             "type": "string"
           },
           "step_id": {
@@ -862,173 +998,22 @@
         },
         "required": [
           "cid",
-          "session_uuid",
+          "root",
           "actor_id",
           "step_id",
           "transformation",
           "occurred_at",
           "prev",
-          "derived_from",
-          "dut"
+          "derived_from"
         ],
         "title": "LineageRead",
         "type": "object"
       },
-      "NewSessionCreate": {
-        "properties": {
-          "session_uuid": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "stable session key; defaults to a new uuid4",
-            "title": "Session Uuid"
-          },
-          "step_id": {
-            "default": "session",
-            "title": "Step Id",
-            "type": "string"
-          }
-        },
-        "title": "NewSessionCreate",
-        "type": "object"
-      },
-      "RecordCreate": {
+      "LineageRootCreate": {
+        "additionalProperties": false,
         "properties": {
           "actor_id": {
-            "title": "Actor Id",
-            "type": "string"
-          },
-          "agent_output": {
-            "title": "Agent Output",
-            "type": "string"
-          },
-          "agent_uuid": {
-            "format": "uuid",
-            "title": "Agent Uuid",
-            "type": "string"
-          },
-          "artifact_cids": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Artifact Cids",
-            "type": "array"
-          },
-          "business_object_keys": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Business Object Keys",
-            "type": "array"
-          },
-          "config_cid": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "hex CID of the config used; defaults to the agent's active one",
-            "title": "Config Cid"
-          },
-          "input_context": {
-            "title": "Input Context",
-            "type": "string"
-          },
-          "occurred_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Occurred At"
-          },
-          "prev": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "hex CIDs of intra-session predecessors; defaults to the session frontier",
-            "title": "Prev"
-          },
-          "sequence": {
-            "default": 0,
-            "title": "Sequence",
-            "type": "integer"
-          },
-          "span_id": {
-            "description": "runtime span handle, assigned at span start",
-            "title": "Span Id",
-            "type": "string"
-          },
-          "step_id": {
-            "title": "Step Id",
-            "type": "string"
-          },
-          "transformation": {
-            "title": "Transformation",
-            "type": "string"
-          },
-          "used_sessions": {
-            "description": "sessions whose results this round consumed; each one's frontier is linked in derived_from (head-at-handoff)",
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "title": "Used Sessions",
-            "type": "array"
-          }
-        },
-        "required": [
-          "agent_uuid",
-          "span_id",
-          "input_context",
-          "agent_output",
-          "transformation",
-          "actor_id",
-          "step_id"
-        ],
-        "title": "RecordCreate",
-        "type": "object"
-      },
-      "RecordRead": {
-        "properties": {
-          "dut": {
-            "$ref": "#/components/schemas/DUTRead"
-          },
-          "node": {
-            "$ref": "#/components/schemas/LineageRead"
-          }
-        },
-        "required": [
-          "dut",
-          "node"
-        ],
-        "title": "RecordRead",
-        "type": "object"
-      },
-      "SessionCreate": {
-        "properties": {
-          "actor_id": {
+            "maxLength": 2048,
             "title": "Actor Id",
             "type": "string"
           },
@@ -1044,103 +1029,23 @@
             ],
             "title": "Occurred At"
           },
-          "session_uuid": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "stable session key; defaults to a new uuid4",
-            "title": "Session Uuid"
-          },
           "step_id": {
+            "maxLength": 2048,
             "title": "Step Id",
             "type": "string"
           },
           "transformation": {
-            "default": "session-start",
+            "maxLength": 2048,
             "title": "Transformation",
             "type": "string"
           }
         },
         "required": [
           "actor_id",
-          "step_id"
+          "step_id",
+          "transformation"
         ],
-        "title": "SessionCreate",
-        "type": "object"
-      },
-      "SessionRead": {
-        "properties": {
-          "frontier": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Frontier",
-            "type": "array"
-          },
-          "nodes": {
-            "items": {
-              "$ref": "#/components/schemas/LineageRead"
-            },
-            "title": "Nodes",
-            "type": "array"
-          },
-          "session_uuid": {
-            "format": "uuid",
-            "title": "Session Uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "session_uuid",
-          "nodes",
-          "frontier"
-        ],
-        "title": "SessionRead",
-        "type": "object"
-      },
-      "SessionSummary": {
-        "properties": {
-          "frontier": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Frontier",
-            "type": "array"
-          },
-          "last_occurred_at": {
-            "format": "date-time",
-            "title": "Last Occurred At",
-            "type": "string"
-          },
-          "nodes": {
-            "title": "Nodes",
-            "type": "integer"
-          },
-          "session_uuid": {
-            "format": "uuid",
-            "title": "Session Uuid",
-            "type": "string"
-          },
-          "started_at": {
-            "format": "date-time",
-            "title": "Started At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "session_uuid",
-          "nodes",
-          "started_at",
-          "last_occurred_at",
-          "frontier"
-        ],
-        "title": "SessionSummary",
+        "title": "LineageRootCreate",
         "type": "object"
       },
       "TracebackStep": {
@@ -1275,17 +1180,50 @@
         "title": "WatermarkRead",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "description": "A service key from AUTH_SERVICE_KEYS.",
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
     "title": "aits",
-    "version": "0.1.0"
+    "version": "0.3.0"
   },
   "openapi": "3.1.0",
   "paths": {
     "/agents/": {
       "get": {
+        "description": "Agents in registration order, one page at a time.",
         "operationId": "agents_list_all",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -1300,8 +1238,23 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "List All",
         "tags": [
           "agents"
@@ -1341,6 +1294,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Register",
         "tags": [
           "agents"
@@ -1384,6 +1342,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get",
         "tags": [
           "agents"
@@ -1435,6 +1398,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Rename",
         "tags": [
           "agents"
@@ -1482,6 +1450,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Activation History",
         "tags": [
           "configs"
@@ -1533,6 +1506,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Activate",
         "tags": [
           "configs"
@@ -1576,6 +1554,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Active Config",
         "tags": [
           "configs"
@@ -1630,69 +1613,20 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Set Config",
         "tags": [
           "configs"
         ]
       }
     },
-    "/agents/{agent_uuid}/record/": {
-      "post": {
-        "description": "Record one round of this agent's work into its current session,\nstarting a session if it has none. Concurrent operations on one agent\nshould use ``POST /lineage/{session_uuid}/record/`` with explicit sessions\ninstead of sharing this pointer.",
-        "operationId": "agents_record",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "agent_uuid",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Agent Uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AgentRecordCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Record",
-        "tags": [
-          "agents"
-        ]
-      }
-    },
     "/agents/{agent_uuid}/sessions/": {
       "get": {
-        "description": "Sessions this agent produced work in, most recently active first.\n\nAn agent participates in a session when one of its DUTs (``agent_cid`` ==\nthe agent's genesis cid) is linked by a lineage node. Each summary covers\nALL nodes in that session -- identical semantics to ``GET /lineage/`` -- so\nfrontier and timestamps stay coherent even when a session mixes actors.",
+        "description": "Graphs this agent produced work in, most recently active first.\n\nAn agent participates in a graph when one of its DUTs (``agent_cid`` ==\nthe agent's genesis cid) is linked by a lineage node. Structural actor\nlabels alone do not establish participation. Each summary covers ALL\nnodes in that graph -- identical semantics to ``GET /lineage/`` -- so\nfrontier and timestamps stay coherent even when a graph mixes actors.",
         "operationId": "agents_list_sessions",
         "parameters": [
           {
@@ -1722,7 +1656,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/SessionSummary"
+                    "$ref": "#/components/schemas/LineageGraphSummary"
                   },
                   "title": "Response Agents List Sessions",
                   "type": "array"
@@ -1742,59 +1676,12 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Sessions",
-        "tags": [
-          "agents"
-        ]
-      },
-      "post": {
-        "description": "Start a fresh session for this agent and point its current-session\nref at it; subsequent ``record`` calls chain there. Returns the session's\ngenesis node.",
-        "operationId": "agents_new_session",
-        "parameters": [
+        "security": [
           {
-            "in": "path",
-            "name": "agent_uuid",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Agent Uuid",
-              "type": "string"
-            }
+            "HTTPBearer": []
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewSessionCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LineageRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "New Session",
+        "summary": "List Sessions",
         "tags": [
           "agents"
         ]
@@ -1837,6 +1724,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Upload",
         "tags": [
           "artifacts"
@@ -1880,6 +1772,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get By Digest",
         "tags": [
           "artifacts"
@@ -1931,6 +1828,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Resolve",
         "tags": [
           "artifacts"
@@ -1973,6 +1875,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Upload File",
         "tags": [
           "artifacts"
@@ -2015,6 +1922,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get",
         "tags": [
           "artifacts"
@@ -2065,6 +1977,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Set Locator",
         "tags": [
           "artifacts"
@@ -2117,6 +2034,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Add Alias",
         "tags": [
           "artifacts"
@@ -2138,6 +2060,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Full Audit",
         "tags": [
           "audit"
@@ -2146,6 +2073,7 @@
     },
     "/commits/": {
       "get": {
+        "description": "Commit-log entries in ``seq`` order; page with ``after_seq`` set to the last ``seq`` seen.",
         "operationId": "audit_commits",
         "parameters": [
           {
@@ -2166,10 +2094,28 @@
           },
           {
             "in": "query",
+            "name": "after_seq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After Seq"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -2201,6 +2147,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Commits",
         "tags": [
           "audit"
@@ -2242,6 +2193,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create",
         "tags": [
           "configs"
@@ -2284,6 +2240,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get",
         "tags": [
           "configs"
@@ -2325,6 +2286,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Create",
         "tags": [
           "duts"
@@ -2367,6 +2333,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get",
         "tags": [
           "duts"
@@ -2375,6 +2346,7 @@
     },
     "/health": {
       "get": {
+        "description": "Liveness: the process is up. Does not touch the database.",
         "operationId": "health_health",
         "responses": {
           "200": {
@@ -2394,10 +2366,37 @@
         ]
       }
     },
+    "/ledger/head": {
+      "get": {
+        "description": "The latest commit-log entry, and the first entry's hash as the ledger's identity.\n\nDerived per request; all fields are null while the log is empty.",
+        "operationId": "audit_head",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerHeadRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Head",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
     "/lineage/": {
       "get": {
-        "description": "Enumerate sessions, most recently active first. Includes sub-sessions\n(e.g. subagent work); their parents reach them via ``derived_from``.",
-        "operationId": "lineage_list_sessions",
+        "description": "Enumerate lineage graphs by derived root, most recently active first.",
+        "operationId": "lineage_list_roots",
         "parameters": [
           {
             "in": "query",
@@ -2416,9 +2415,9 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/SessionSummary"
+                    "$ref": "#/components/schemas/LineageGraphSummary"
                   },
-                  "title": "Response Lineage List Sessions",
+                  "title": "Response Lineage List Roots",
                   "type": "array"
                 }
               }
@@ -2436,18 +2435,24 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List Sessions",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Roots",
         "tags": [
           "lineage"
         ]
       },
       "post": {
-        "operationId": "lineage_start_session",
+        "description": "Create a root LT. Identical content and event time dedupe to one CID.",
+        "operationId": "lineage_create_root",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SessionCreate"
+                "$ref": "#/components/schemas/LineageRootCreate"
               }
             }
           },
@@ -2475,22 +2480,27 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Start Session",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Root",
         "tags": [
           "lineage"
         ]
       }
     },
-    "/lineage/nodes/{cid_hex}/": {
+    "/lineage/nodes/{lt_cid}/": {
       "get": {
-        "operationId": "lineage_get_node",
+        "operationId": "lineage_get_lineage_node",
         "parameters": [
           {
             "in": "path",
-            "name": "cid_hex",
+            "name": "lt_cid",
             "required": true,
             "schema": {
-              "title": "Cid Hex",
+              "title": "Lt Cid",
               "type": "string"
             }
           }
@@ -2517,23 +2527,28 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Node",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Lineage Node",
         "tags": [
           "lineage"
         ]
       }
     },
-    "/lineage/nodes/{cid_hex}/traceback/": {
+    "/lineage/nodes/{lt_cid}/traceback/": {
       "get": {
-        "description": "Every contributing DUT in the node's ancestry, ordered by event time,\neach carrying its agent + config attribution.",
+        "description": "Every contributing DUT in the node's ancestry, ordered by event time,\neach carrying its agent + config attribution. Follows ``prev`` and\n``derived_from``; DUTs are collected from LT attachments.",
         "operationId": "lineage_trace_back",
         "parameters": [
           {
             "in": "path",
-            "name": "cid_hex",
+            "name": "lt_cid",
             "required": true,
             "schema": {
-              "title": "Cid Hex",
+              "title": "Lt Cid",
               "type": "string"
             }
           }
@@ -2564,23 +2579,28 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Trace Back",
         "tags": [
           "lineage"
         ]
       }
     },
-    "/lineage/nodes/{cid_hex}/watermark/": {
+    "/lineage/nodes/{lt_cid}/watermark/": {
       "get": {
         "description": "Render the flat P1 watermark string straight off a node: its\n``derived_from`` parents (each head's produced DUT when it has one), the\ntransformation, and the asserted event time.",
         "operationId": "lineage_watermark",
         "parameters": [
           {
             "in": "path",
-            "name": "cid_hex",
+            "name": "lt_cid",
             "required": true,
             "schema": {
-              "title": "Cid Hex",
+              "title": "Lt Cid",
               "type": "string"
             }
           }
@@ -2607,23 +2627,27 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Watermark",
         "tags": [
           "lineage"
         ]
       }
     },
-    "/lineage/{session_uuid}/": {
+    "/lineage/{root_cid}/": {
       "get": {
-        "operationId": "lineage_get_session_nodes",
+        "operationId": "lineage_get_lineage_graph",
         "parameters": [
           {
             "in": "path",
-            "name": "session_uuid",
+            "name": "root_cid",
             "required": true,
             "schema": {
-              "format": "uuid",
-              "title": "Session Uuid",
+              "title": "Root Cid",
               "type": "string"
             }
           }
@@ -2633,7 +2657,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionRead"
+                  "$ref": "#/components/schemas/LineageGraphRead"
                 }
               }
             },
@@ -2650,23 +2674,28 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Session Nodes",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Lineage Graph",
         "tags": [
           "lineage"
         ]
       }
     },
-    "/lineage/{session_uuid}/append/": {
+    "/lineage/{root_cid}/nodes/": {
       "post": {
-        "operationId": "lineage_append",
+        "description": "Create a non-root LT under ``root_cid``.\n\nValidates every link before storage. When ``dut`` is supplied, the DUT,\nLT, and both observation entries commit together.",
+        "operationId": "lineage_create_lineage_node",
         "parameters": [
           {
             "in": "path",
-            "name": "session_uuid",
+            "name": "root_cid",
             "required": true,
             "schema": {
-              "format": "uuid",
-              "title": "Session Uuid",
+              "title": "Root Cid",
               "type": "string"
             }
           }
@@ -2675,7 +2704,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AppendCreate"
+                "$ref": "#/components/schemas/LineageNodeCreate"
               }
             }
           },
@@ -2686,11 +2715,28 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LineageRead"
+                  "$ref": "#/components/schemas/LineageNodeRead"
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Lineage node created",
+            "headers": {
+              "Location": {
+                "description": "Canonical URL of the created lineage node",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed CID, non-root path, or invalid root relationship"
+          },
+          "404": {
+            "description": "Referenced LT or DUT is absent or the wrong kind"
+          },
+          "409": {
+            "description": "Inline DUT has no active agent configuration"
           },
           "422": {
             "content": {
@@ -2703,63 +2749,39 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Append",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Lineage Node",
         "tags": [
           "lineage"
         ]
       }
     },
-    "/lineage/{session_uuid}/record/": {
-      "post": {
-        "description": "Record one round of work: the DUT span and its watermark node, chained\nonto the session, in a single call.",
-        "operationId": "lineage_record",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_uuid",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Session Uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordCreate"
-              }
-            }
-          },
-          "required": true
-        },
+    "/ready": {
+      "get": {
+        "description": "Readiness: the service can reach its database.",
+        "operationId": "health_ready",
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RecordRead"
+                  "$ref": "#/components/schemas/HealthStatus"
                 }
               }
             },
             "description": "Successful Response"
           },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+          "503": {
+            "description": "The database is unreachable."
           }
         },
-        "summary": "Record",
+        "summary": "Ready",
         "tags": [
-          "lineage"
+          "health"
         ]
       }
     },
@@ -2799,6 +2821,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Verify",
         "tags": [
           "audit"

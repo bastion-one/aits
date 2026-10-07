@@ -1,5 +1,7 @@
 """DUT span node HTTP roundtrips: identity, dedup-vs-occurrence, two clocks."""
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi.testclient import TestClient
 
 from tests.helpers import make_agent, make_artifact, make_config, make_dut
@@ -57,6 +59,7 @@ def test_naive_occurred_at_rejected(client: TestClient) -> None:
 
 
 def test_replay_dedupes_node_but_counts_every_observation(client: TestClient) -> None:
+    """Retain evidence of each submission even when its DUT content is identical."""
     agent = make_agent(client)
     config = make_config(client)
     first = make_dut(client, agent["uuid"], config["cid"])
@@ -69,6 +72,7 @@ def test_replay_dedupes_node_but_counts_every_observation(client: TestClient) ->
 
 
 def test_span_id_and_occurred_at_are_inside_the_cid(client: TestClient) -> None:
+    """Distinguish otherwise identical outputs by their span identity and event time."""
     agent = make_agent(client)
     config = make_config(client)
     base = make_dut(client, agent["uuid"], config["cid"])
@@ -78,6 +82,7 @@ def test_span_id_and_occurred_at_are_inside_the_cid(client: TestClient) -> None:
 
 
 def test_artifact_set_folds_into_the_cid(client: TestClient) -> None:
+    """Make artifact membership affect DUT identity, independent of order or duplicates."""
     agent = make_agent(client)
     config = make_config(client)
     art_a = make_artifact(client, b"bytes-a")
@@ -98,3 +103,68 @@ def test_artifact_set_folds_into_the_cid(client: TestClient) -> None:
         artifact_cids=[art_b["cid"], art_a["cid"], art_a["cid"]],
     )
     assert reordered["cid"] == linked["cid"]
+
+
+def test_dut_cid_inputs_accept_case_and_reject_whitespace(client: TestClient) -> None:
+    agent = make_agent(client)
+    config = make_config(client)
+    artifact = make_artifact(client, b"bytes")
+    dut = make_dut(
+        client,
+        agent["uuid"],
+        config["cid"].upper(),
+        artifact_cids=[artifact["cid"].upper()],
+    )
+    assert dut["config_cid"] == config["cid"]
+    assert dut["artifact_cids"] == [artifact["cid"]]
+
+    spaced = " ".join(config["cid"][i : i + 2] for i in range(0, 64, 2))
+    r = client.post(
+        "/duts/",
+        json={
+            "agent_uuid": agent["uuid"],
+            "config_cid": spaced,
+            "span_id": "s",
+            "sequence": 0,
+            "input_context": "p",
+            "agent_output": "a",
+        },
+    )
+    assert r.status_code == 400
+    assert "config_cid" in r.json()["detail"]
+
+    art_spaced = " ".join(artifact["cid"][i : i + 2] for i in range(0, 64, 2))
+    r = client.post(
+        "/duts/",
+        json={
+            "agent_uuid": agent["uuid"],
+            "config_cid": config["cid"],
+            "span_id": "s",
+            "sequence": 0,
+            "input_context": "p",
+            "agent_output": "a",
+            "artifact_cids": [art_spaced],
+        },
+    )
+    assert r.status_code == 400
+    assert "artifact_cids" in r.json()["detail"]
+
+
+def test_forward_dated_occurred_at_rejected(client: TestClient) -> None:
+    """A self-asserted event time in the future would reorder traceback."""
+    agent = make_agent(client)
+    config = make_config(client)
+    future = (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()
+    r = client.post(
+        "/duts/",
+        json={
+            "agent_uuid": agent["uuid"],
+            "config_cid": config["cid"],
+            "span_id": "s",
+            "sequence": 0,
+            "input_context": "p",
+            "agent_output": "a",
+            "occurred_at": future,
+        },
+    )
+    assert r.status_code == 400
