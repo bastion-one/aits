@@ -22,10 +22,10 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from ..db import SessionDep
-from ..hashing import sha256_hash
+from ..hashing import sha256_hash, sha256_hasher
 from ..ledger import record
 from ..models import Artifact, ArtifactAlias
-from .common import cid_from_hex
+from .common import MAX_LABEL, Label, cid_from_hex
 
 router = APIRouter(tags=["artifacts"])
 
@@ -45,8 +45,8 @@ class AliasRead(BaseModel):
 
 
 class AliasCreate(BaseModel):
-    source: str
-    alias: str
+    source: Label
+    alias: Label
 
 
 class ArtifactRead(BaseModel):
@@ -66,7 +66,7 @@ class ArtifactRead(BaseModel):
 
 
 class ArtifactUpdate(BaseModel):
-    locator: str | None
+    locator: Label | None
 
 
 class AliasResolveRead(BaseModel):
@@ -144,8 +144,8 @@ def upload(
 async def upload_file(
     session: SessionDep,
     file: UploadFile,
-    source: str = Form(default=_DEFAULT_UPLOAD_SOURCE),
-    alias: str | None = Form(default=None),
+    source: str = Form(default=_DEFAULT_UPLOAD_SOURCE, max_length=MAX_LABEL),
+    alias: str | None = Form(default=None, max_length=MAX_LABEL),
 ) -> ArtifactRead:
     """Convenience: hash an uploaded file and register an alias in one call.
 
@@ -155,8 +155,11 @@ async def upload_file(
     bare file upload is captured as ``(source="upload", alias=<filename>)`` and
     is immediately resolvable.
     """
-    body = await file.read()
-    artifact = _ingest(session, body)
+    # Hash in chunks so the upload is never held in memory whole.
+    hasher = sha256_hasher()
+    while chunk := await file.read(1024 * 1024):
+        hasher.update(chunk)
+    artifact, _ = record(session, Artifact(sha256=hasher.digest()))
     alias_value = alias or file.filename
     if alias_value:
         _upsert_alias(session, artifact.cid, source, alias_value)

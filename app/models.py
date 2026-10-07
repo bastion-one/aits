@@ -3,6 +3,8 @@ derived reverse index and the commit log.
 
 Every node table's primary key is the node's **CID** (raw 32-byte SHA-256,
 computed by ``app.dag.compute_cid`` over the node assembly in ``app.nodes``).
+Every node row also carries ``v``, the version of its content shape; it is
+hashed with the content and selects the assembler (see ``app.nodes``).
 Link targets are stored as typed columns on the owning row -- single-valued
 roles as raw-bytes columns, multi-valued roles as JSON lists of hex CIDs --
 so the rows alone are sufficient to rebuild every derived structure.
@@ -20,9 +22,11 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     ForeignKey,
     JSON,
+    Integer,
     LargeBinary,
     UniqueConstraint,
 )
@@ -35,6 +39,10 @@ def _cid_pk() -> Column:
     return Column(LargeBinary, primary_key=True)
 
 
+def _schema_version() -> Column:
+    return Column(Integer, nullable=False, server_default="1")
+
+
 def _cid_col(*, nullable: bool = False, index: bool = False) -> Column:
     return Column(LargeBinary, nullable=nullable, index=index)
 
@@ -43,20 +51,19 @@ class Agent(SQLModel, table=True):
     """Agent genesis node: ``{type, uuid, created_at}`` -> CID.
 
     ``uuid`` is the stable ref-namespace key clients address agents by.
-    ``name`` and ``current_session_uuid`` are mutable ref-layer annotations --
-    outside the hash, overwritten in place, no history. The session pointer
-    backs the agent-scoped ``record`` entry point: it names the session new
-    rounds chain onto until the agent starts a new one.
+    ``name`` is a mutable ref-layer annotation -- outside the hash,
+    overwritten in place, no history. Callers select a lineage root
+    explicitly; agent identity does not name a current graph.
     """
 
     __tablename__ = "agent"
     __table_args__ = (UniqueConstraint("uuid", name="uq_agent_uuid"),)
 
     cid: bytes = Field(default=b"", sa_column=_cid_pk())
+    v: int = Field(default=1, sa_column=_schema_version())
     uuid: UUID = Field(index=True)
     created_at: datetime = Field(sa_column=Column(UTCDateTime, nullable=False))
     name: str
-    current_session_uuid: UUID | None = Field(default=None)
 
 
 class AgentConfig(SQLModel, table=True):
@@ -69,6 +76,7 @@ class AgentConfig(SQLModel, table=True):
     __tablename__ = "agent_config"
 
     cid: bytes = Field(default=b"", sa_column=_cid_pk())
+    v: int = Field(default=1, sa_column=_schema_version())
     system_prompt: str
     llm_config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     tools: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
@@ -90,6 +98,7 @@ class ConfigActivation(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("prev_cid", name="uq_config_activation_prev"),)
 
     cid: bytes = Field(default=b"", sa_column=_cid_pk())
+    v: int = Field(default=1, sa_column=_schema_version())
     agent_uuid: UUID = Field(index=True)
     agent_cid: bytes = Field(sa_column=_cid_col())
     config_cid: bytes = Field(sa_column=_cid_col(index=True))
@@ -108,6 +117,7 @@ class DataUniqueTag(SQLModel, table=True):
     __tablename__ = "dut"
 
     cid: bytes = Field(default=b"", sa_column=_cid_pk())
+    v: int = Field(default=1, sa_column=_schema_version())
     span_id: str
     business_object_keys: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     sequence: int
@@ -120,19 +130,20 @@ class DataUniqueTag(SQLModel, table=True):
 
 
 class LineageTag(SQLModel, table=True):
-    """Session-DAG watermark node: one append per round.
+    """Lineage-DAG watermark node: one append per round.
 
-    Content: ``{type, session_uuid, actor_id, step_id, transformation,
-    occurred_at}``. Links: ``{prev?, derived_from?, dut?}`` -- ``prev`` is the
-    multi-valued intra-session causal edge set (fork/join), ``derived_from``
-    the multi-valued cross-session merge edge set, ``dut`` the span this round
-    produced. The session frontier is derived, never stored.
+    Content: ``{type, actor_id, step_id, transformation, occurred_at}``.
+    Links: ``{prev?, derived_from?, dut?}`` -- ``prev`` is the multi-valued
+    intra-graph causal edge set (fork/join), ``derived_from`` the multi-valued
+    cross-graph merge edge set, ``dut`` the span this round produced. A root
+    LT has no ``prev``; its CID identifies the graph. Membership and the
+    frontier are derived from ``prev``, never stored.
     """
 
     __tablename__ = "lineage_tag"
 
     cid: bytes = Field(default=b"", sa_column=_cid_pk())
-    session_uuid: UUID = Field(index=True)
+    v: int = Field(default=1, sa_column=_schema_version())
     actor_id: str
     step_id: str
     transformation: str
@@ -157,6 +168,7 @@ class Artifact(SQLModel, table=True):
     __tablename__ = "artifact"
 
     cid: bytes = Field(default=b"", sa_column=_cid_pk())
+    v: int = Field(default=1, sa_column=_schema_version())
     sha256: bytes = Field(sa_column=Column(LargeBinary, nullable=False, unique=True))
     locator: str | None = Field(default=None)
 
@@ -192,13 +204,43 @@ class CommitLogEntry(SQLModel, table=True):
     ``recorded_at`` is server-assigned and lives only here -- never inside a
     CID. Node submissions dedupe on content; the log still appends, so every
     observation stays countable. ``entry_hash`` chains over
-    ``(cid, recorded_at, prev_hash)``; the head is externally anchorable.
+    ``(cid, recorded_at, prev_hash, principal)``; the head is
+    externally anchorable. Like ``recorded_at``, attribution lives here rather
+    than in a node CID. ``principal`` is the identity AITS authenticated for the
+    request, named by its key; AITS records nothing it did not authenticate.
+
+    ``ledger.stage`` serializes appends under an advisory lock. The unique
+    constraint on ``prev_hash`` is the storage-level backstop: two entries
+    that chain to the same predecessor cannot both commit, so the log cannot
+    fork even if a write path skips the lock.
     """
 
     __tablename__ = "commit_log"
+    __table_args__ = (UniqueConstraint("prev_hash", name="uq_commit_log_prev_hash"),)
 
     seq: int | None = Field(default=None, primary_key=True)
     cid: bytes = Field(sa_column=_cid_col(index=True))
     recorded_at: datetime = Field(sa_column=Column(UTCDateTime, nullable=False))
     prev_hash: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     entry_hash: bytes = Field(sa_column=Column(LargeBinary, nullable=False, unique=True))
+    principal: str
+    """The identity AITS authenticated for the request that created this entry: the
+    name of the key from ``AUTH_SERVICE_KEYS`` (``anonymous`` in open mode)."""
+
+
+class LedgerFormat(SQLModel, table=True):
+    """The ledger format record: one row, written at first startup, checked at every startup.
+
+    ``ledger.init_ledger`` writes ``ledger.FORMAT`` here into a fresh database and
+    refuses to start if the row is missing from a non-empty ledger or differs.
+    Nothing in it is hashed, because a wrong format already makes every CID fail
+    to verify.
+    """
+
+    __tablename__ = "ledger_format"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_ledger_format_one_row"),)
+
+    id: int = Field(primary_key=True)
+    format: int = Field(nullable=False)
+    hash: str = Field(nullable=False)
+    canonical: str = Field(nullable=False)

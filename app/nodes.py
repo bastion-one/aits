@@ -5,6 +5,11 @@
 (``app.ledger``) uses it to compute the CID at submission; ``resolve`` uses it
 to feed ``app.dag.verify``, so tamper is caught by recomputing a node's hash
 and comparing it to the address it is stored under.
+
+Assemblers are append-only code. Each row carries a schema version ``v``, which
+is part of the hashed content and selects the assembler: ``_ASSEMBLERS`` is
+keyed by ``(table, v)``. A new content shape gets a new ``v`` and a new
+assembler; old assemblers stay, so old rows keep verifying.
 """
 
 from collections.abc import Mapping
@@ -40,12 +45,13 @@ def hex_cid_list(cids: "set[bytes] | frozenset[bytes] | list[bytes]") -> list[st
 
 
 def _agent_node(row: Agent) -> Node:
-    content = {"type": "Agent", "uuid": row.uuid, "created_at": row.created_at}
+    content = {"v": row.v, "type": "Agent", "uuid": row.uuid, "created_at": row.created_at}
     return content, {}
 
 
 def _config_node(row: AgentConfig) -> Node:
     content = {
+        "v": row.v,
         "type": "AgentConfig",
         "system_prompt": row.system_prompt,
         "llm_config": row.llm_config,
@@ -56,13 +62,14 @@ def _config_node(row: AgentConfig) -> Node:
 
 
 def _activation_node(row: ConfigActivation) -> Node:
-    content = {"type": "ConfigActivation", "agent_uuid": row.agent_uuid}
+    content = {"v": row.v, "type": "ConfigActivation", "agent_uuid": row.agent_uuid}
     links = {"agent": row.agent_cid, "config": row.config_cid, "prev": row.prev_cid}
     return content, links
 
 
 def _dut_node(row: DataUniqueTag) -> Node:
     content = {
+        "v": row.v,
         "type": "DUT",
         "span_id": row.span_id,
         "business_object_keys": row.business_object_keys,
@@ -81,8 +88,8 @@ def _dut_node(row: DataUniqueTag) -> Node:
 
 def _lineage_node(row: LineageTag) -> Node:
     content = {
+        "v": row.v,
         "type": "LT",
-        "session_uuid": row.session_uuid,
         "actor_id": row.actor_id,
         "step_id": row.step_id,
         "transformation": row.transformation,
@@ -97,25 +104,26 @@ def _lineage_node(row: LineageTag) -> Node:
 
 
 def _artifact_node(row: Artifact) -> Node:
-    content = {"type": "Artifact", "sha256": row.sha256.hex()}
+    content = {"v": row.v, "type": "Artifact", "sha256": row.sha256.hex()}
     return content, {}
 
 
 _ASSEMBLERS = {
-    Agent: _agent_node,
-    AgentConfig: _config_node,
-    ConfigActivation: _activation_node,
-    DataUniqueTag: _dut_node,
-    LineageTag: _lineage_node,
-    Artifact: _artifact_node,
+    (Agent, 1): _agent_node,
+    (AgentConfig, 1): _config_node,
+    (ConfigActivation, 1): _activation_node,
+    (DataUniqueTag, 1): _dut_node,
+    (LineageTag, 1): _lineage_node,
+    (Artifact, 1): _artifact_node,
 }
 
 
 def to_node(row: Any) -> Node:
     """Assemble a typed row into its canonical ``(content, links)`` pair."""
-    assembler = _ASSEMBLERS.get(type(row))
+    v = getattr(row, "v", None)  # None for a row that is not a node at all
+    assembler = _ASSEMBLERS.get((type(row), v))
     if assembler is None:
-        raise TypeError(f"not a node row: {type(row).__name__}")
+        raise TypeError(f"no assembler for {type(row).__name__} v{v}")
     return assembler(row)
 
 

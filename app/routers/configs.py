@@ -19,17 +19,17 @@ from sqlmodel import Session
 
 from ..db import SessionDep
 from ..ledger import activate as activate_config
-from ..ledger import activation_head, activation_rows, record
+from ..ledger import activation_head, activation_rows, lock_commit_head, record
 from ..models import AgentConfig, ConfigActivation
-from .common import cid_from_hex, get_agent_row, optional_cid
+from .common import MAX_ITEMS, LongText, cid_from_hex, get_agent_row, optional_cid
 
 router = APIRouter(tags=["configs"])
 
 
 class ConfigCreate(BaseModel):
-    system_prompt: str
+    system_prompt: LongText
     llm_config: dict[str, Any] = Field(default_factory=dict)
-    tools: list[Any] = Field(default_factory=list)
+    tools: list[Any] = Field(default_factory=list, max_length=MAX_ITEMS)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -116,6 +116,9 @@ def activate(agent_uuid: UUID, body: ActivationCreate, session: SessionDep) -> A
     config_cid = cid_from_hex(body.config_cid, field="config_cid")
     _get_config_row(session, config_cid, hex_value=body.config_cid)
     expected = optional_cid(body.expected_head, field="expected_head")
+    # Compare and set under one lock, so two callers expecting the same head
+    # cannot both pass the check.
+    lock_commit_head(session)
     head = activation_head(session, agent_uuid)
     head_cid = head.cid if head is not None else None
     if expected != head_cid:

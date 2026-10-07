@@ -42,12 +42,11 @@ CONTAINER_REGISTRY_USERNAME  ?= $(CONTAINER_REGISTRY_NAMESPACE)
 CONTAINER_REGISTRY_TOKEN     ?=
 
 # Paths black/pylint operate on. clients/python is generated code -- always skipped.
-LINT_PATHS              := app tests
+LINT_PATHS              := app tests tools/check_quality.py tools/mutation_probes.py
 
 # Snyk: native uv.lock scanning needs Enterprise + Snyk Preview (enable-uv-cli). Until then,
 # snyk-oss exports requirements for pip-mode scanning. snyk-code scopes SAST to app code.
 SNYK                    := mise exec snyk -- snyk
-VENV_PYTHON             := $(CURDIR)/.venv/bin/python
 SNYK_CODE_PATHS         := $(LINT_PATHS)
 
 # uv.lock uses exclude-newer-span P7D. To bump a package inside that window, pass CLI overrides
@@ -85,7 +84,7 @@ fmt-check:  ## Verify formatting without writing (CI-friendly)
 
 .PHONY: lint
 lint:  ## Lint the codebase with pylint
-	$(UV_RUN) pylint $(LINT_PATHS)
+	$(UV_RUN) --group quality pylint $(LINT_PATHS)
 
 .PHONY: check
 check: fmt-check lint  ## Run all static checks (formatting + lint)
@@ -97,35 +96,68 @@ snyk:  ## Run Snyk OSS (deps) and Snyk Code (SAST) scans
 	$(MAKE) snyk-code || status=1; \
 	exit $$status
 
-snyk-oss: deps  ## Scan Python dependencies with Snyk (pip workaround for uv projects)
-	@# uv venvs omit pip; Snyk's pip resolver still needs it. --skip-unresolved works around
-	@# uv's install layout when packages are present but not discoverable via pkg_resources.
-	@req=$$(mktemp); \
-	trap 'rm -f "$$req"' EXIT; \
-	uv pip install -q pip; \
+snyk-oss:  ## Scan Python dependencies with Snyk (pip workaround for uv projects)
+	@# Snyk needs pip and SQLAlchemy's greenlet even where uv's platform marker excludes it.
+	@set -e; \
+	scan_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$scan_dir"' EXIT; \
+	req="$$scan_dir/requirements.txt"; \
 	$(UV) export --frozen --no-dev --no-hashes --format requirements-txt -o "$$req"; \
+	$(UV) venv "$$scan_dir/venv"; \
+	$(UV) pip install --python "$$scan_dir/venv/bin/python" pip -r "$$req" \
+		"$$(sed -n 's/^\(greenlet==[^ ;]*\).*/\1/p' "$$req")"; \
 	$(SNYK) test \
 		--file="$$req" \
 		--package-manager=pip \
-		--command="$(VENV_PYTHON)" \
-		--skip-unresolved=true \
+		--command="$$scan_dir/venv/bin/python" \
 		--project-name=aits
 
 snyk-code:  ## Scan application source with Snyk Code (SAST)
-	@for path in $(SNYK_CODE_PATHS); do \
+	@status=0; \
+	for path in $(SNYK_CODE_PATHS); do \
 		echo "==> Snyk Code: $$path"; \
-		$(SNYK) code test "$$path" || exit $$?; \
-	done
+		$(SNYK) code test "$$path" || status=1; \
+	done; \
+	exit $$status
 
 .PHONY: test
 test:  ## Run the fast unit suite (TestClient + in-memory sqlite; excludes integration)
 	$(UV_RUN) pytest
 
+.PHONY: quality quality-coverage quality-complexity quality-mutation quality-probes
+quality: quality-coverage quality-complexity quality-mutation  ## Enforce all quality thresholds
+
+quality-coverage: regen  ## Require >90% statement/branch coverage and no skipped tests
+	mkdir -p quality-results
+	$(UV_RUN) --group quality --with ./clients/python coverage run -m pytest -q -rs -p no:cacheprovider -m '' --junitxml=quality-results/tests.xml
+	$(UV_RUN) --group quality coverage combine
+	$(UV_RUN) --group quality coverage json -o quality-results/coverage.json
+	$(UV_RUN) --group quality python tools/check_quality.py coverage
+
+quality-complexity:  ## Require every app function's cyclomatic complexity <20
+	$(UV_RUN) --group quality python tools/check_quality.py complexity
+
+quality-probes: regen  ## Kill all 17 hand-written mutation probes, including decorated routes
+	$(UV_RUN) --group quality --with ./clients/python python tools/mutation_probes.py
+
+quality-mutation: quality-probes  ## Require assertion kills for >95% of all assessed mutants
+	@# Fresh results: cached kills can become stale when tests or dependencies change.
+	$(UV_RUN) --group quality python -c 'from pathlib import Path; import shutil; shutil.rmtree("mutants") if Path("mutants").exists() else None'
+	$(UV_RUN) --group quality mutmut run --max-children 4
+	$(UV_RUN) --group quality mutmut results > quality-results/mutation-results.txt
+	$(UV_RUN) --group quality python tools/check_quality.py mutation
+
 .PHONY: test-integration
 test-integration: regen  ## Regenerate the SDK, then run the integration suite (spawns uvicorn)
 	@# The SDK is not a project dependency; install the freshly-generated client
 	@# for this run only. clients/python stays fully ephemeral.
-	$(UV_RUN) --with ./clients/python pytest -m integration tests/integration
+	$(UV_RUN) --with ./clients/python python -m pytest -m integration tests/integration
+
+.PHONY: view
+view: regen  ## Render the ledger as a static HTML page (set AITS_VIEW_ARGS, e.g. AITS_VIEW_ARGS=--no-open)
+	@# The SDK is not a project dependency; install the freshly-generated client
+	@# for this run only. clients/python stays fully ephemeral.
+	$(UV_RUN) --with ./clients/python python3 tools/aits_view.py $(AITS_VIEW_ARGS)
 
 .PHONY: db-up
 db-up:  ## Start the postgres container (detached) and wait until healthy

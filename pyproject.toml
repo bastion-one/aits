@@ -1,16 +1,20 @@
 [project]
 name = "aits"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.3.0"
+description = "Content-addressed ledger for AI agent configurations, inference records, and lineage"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.13"
 dependencies = [
+    "anyio>=4.14.2",
     "fastapi>=0.137.2",
     "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.14.2",
     "python-multipart==0.0.31",
+    # Exact pin: this library's output bytes are the ledger format. A version bump
+    # can change CIDs, so it moves only deliberately, together with the golden vectors.
+    "rfc8785==0.1.4",
     "sqlmodel>=0.0.38",
     "starlette>=1.3.1",
     "uvicorn[standard]>=0.49.0",
@@ -23,6 +27,12 @@ dev = [
     "httpx2>=2.4.0",
     "pylint==4.0.5",
     "pytest==9.0.3",
+]
+quality = [
+    "coverage==7.16.0",
+    "defusedxml>=0.7.1",
+    "mutmut==3.7.0",
+    "radon==6.0.1",
 ]
 # NOTE: the generated SDK (aits-client) is deliberately NOT a dependency
 # here. It is a regenerable, ephemeral artifact (clients/python), and making it
@@ -95,3 +105,20 @@ generated-members = [
     "sqlalchemy.*",
     "sqlmodel.*",
 ]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+sigterm = true
+patch = ["subprocess"]
+
+[tool.coverage.report]
+show_missing = true
+
+# Keep the mutation scope fixed so results can be compared across runs.
+[tool.mutmut]
+source_paths = ["app/"]
+also_copy = [".claude/hooks/", "openapi.json"]
+only_mutate = ["app/ledger.py", "app/routers/lineage.py", "app/routers/common.py", "app/nodes.py"]
+pytest_add_cli_args_test_selection = ["tests/"]
+max_stack_depth = -1

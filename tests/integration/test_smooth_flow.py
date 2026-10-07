@@ -1,9 +1,7 @@
-"""The fast path through the SDK: register agents with their configs, record
-each round of work in one call, and hand results between agents via
-``used_sessions`` -- then verify the whole story.
+"""The fast path through the SDK: register agents with their configs, create
+an explicit root, write inline-DUT nodes, and hand results between graphs via
+exact ``derived_from`` LT CIDs -- then verify the whole story.
 """
-
-from uuid import uuid4
 
 import pytest
 
@@ -42,82 +40,88 @@ def _register(agents: boc.AgentsApi, name: str) -> boc.AgentRead:
     )
 
 
-def _record(
+def _root(lineage: boc.LineageApi, actor: str) -> boc.LineageRead:
+    return lineage.create_root(
+        boc.LineageRootCreate(actor_id=actor, step_id="s", transformation="root")
+    )
+
+
+def _inline_node(
     lineage: boc.LineageApi,
-    session_uuid: str,
+    root_cid: str,
+    prev: list[str],
     agent: boc.AgentRead,
     output: str,
     **overrides,
-) -> boc.RecordRead:
+) -> boc.LineageNodeRead:
     payload = {
-        "agent_uuid": agent.uuid,
-        "span_id": f"span-{output[:8]}",
-        "input_context": f"task for {agent.name}",
-        "agent_output": output,
-        "transformation": "work",
         "actor_id": agent.name,
         "step_id": "s",
+        "transformation": "work",
+        "prev": prev,
+        "dut": boc.InlineDUTCreate(
+            agent_uuid=agent.uuid,
+            span_id=f"span-{output[:8]}",
+            input_context=f"task for {agent.name}",
+            agent_output=output,
+        ),
         **overrides,
     }
-    return lineage.record(session_uuid, boc.RecordCreate(**payload))
+    return lineage.create_lineage_node(root_cid, boc.LineageNodeCreate(**payload))
 
 
-def test_agent_is_the_entry_point(
+def test_explicit_root_is_the_entry_point(
     agents: boc.AgentsApi, lineage: boc.LineageApi, audit: boc.AuditApi
 ) -> None:
-    """register -> agent-scoped record: no session bookkeeping at all."""
+    """Keep root and parent selection with the caller across successive writes."""
     agent = _register(agents, "solo")
-    first = agents.record(
-        agent.uuid,
-        boc.AgentRecordCreate(
-            span_id="r1",
-            input_context="extract",
-            agent_output="total = 4400.00 USD",
-            transformation="invoice-extraction",
-        ),
-    )
-    assert first.node.actor_id == "solo"
+    root = _root(lineage, agent.name)
+    first = _inline_node(lineage, root.cid, [root.cid], agent, "total = 4400.00 USD")
+    assert first.root == root.cid
+    assert first.node.root == root.cid
+    assert first.dut is not None
     assert first.dut.config_cid == agent.active_config_cid
 
-    second = agents.record(
-        agent.uuid,
-        boc.AgentRecordCreate(
-            span_id="r2",
-            input_context="follow-up",
-            agent_output="done",
-            transformation="emit",
-        ),
-    )
-    assert second.node.session_uuid == first.node.session_uuid
+    second = _inline_node(lineage, root.cid, [first.node.cid], agent, "done")
+    assert second.node.root == first.node.root
     assert second.node.prev == [first.node.cid]
 
-    genesis = agents.new_session(agent.uuid, boc.NewSessionCreate())
-    assert genesis.session_uuid != first.node.session_uuid
+    other = _root(lineage, agent.name)
+    assert other.cid != root.cid
     assert audit.verify(second.node.cid).valid is True
 
 
 def test_fast_path_end_to_end(
     agents: boc.AgentsApi, lineage: boc.LineageApi, audit: boc.AuditApi
 ) -> None:
+    """Verify and trace a two-helper handoff using inline DUTs and exact source LT CIDs."""
     helper_a = _register(agents, "sub-A")
     helper_b = _register(agents, "sub-B")
     supervisor = _register(agents, "super")
     assert helper_a.active_config_cid is not None
 
-    sid_a, sid_b = str(uuid4()), str(uuid4())
-    head_a = _record(lineage, sid_a, helper_a, "PO-88")
-    head_b = _record(lineage, sid_b, helper_b, "ACME Corp")
+    root_a = _root(lineage, helper_a.name)
+    root_b = _root(lineage, helper_b.name)
+    head_a = _inline_node(lineage, root_a.cid, [root_a.cid], helper_a, "PO-88")
+    head_b = _inline_node(lineage, root_b.cid, [root_b.cid], helper_b, "ACME Corp")
+    assert head_a.dut is not None
     assert head_a.dut.config_cid == helper_a.active_config_cid
 
-    merge = _record(
+    super_root = _root(lineage, supervisor.name)
+    merge = _inline_node(
         lineage,
-        str(uuid4()),
+        super_root.cid,
+        [super_root.cid],
         supervisor,
         "pay ACME Corp 4400 ref PO-88",
         transformation="Summarization",
-        used_sessions=[sid_a, sid_b],
+        derived_from=[head_a.node.cid, head_b.node.cid],
     )
     assert sorted(merge.node.derived_from) == sorted([head_a.node.cid, head_b.node.cid])
+
+    resolved = lineage.get_lineage_node(merge.node.cid)
+    assert resolved.root == super_root.cid
+    assert resolved.cid == merge.node.cid
 
     verdict = audit.verify(merge.node.cid)
     assert verdict.valid is True

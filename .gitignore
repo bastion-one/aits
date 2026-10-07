@@ -26,6 +26,9 @@ clients/build/*.pyc
 # Testing / coverage
 .pytest_cache/
 .coverage
+.coverage.*
+mutants/
+quality-results/
 htmlcov/
 .tox/
 .mypy_cache/
@@ -49,3 +52,6 @@ clients/python/
 
 # Generated ledger viewer snapshots (tools/aits_view.py)
 aits-view.html
+
+# Local SQLite databases (never commit an evidence ledger)
+*.db

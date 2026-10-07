@@ -1,6 +1,6 @@
 [project]
 name = "aits-client"
-version = "0.1.6"
+version = "0.3.0"
 description = "Python client for the aits HTTP API."
 readme = "README.md"
 license = "Apache-2.0"
